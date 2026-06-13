@@ -1,0 +1,15 @@
+check_name,status,detail
+loop_ids_present,PASS,0 rows missing loop_id
+respondent_ids_present,PASS,0 rows missing respondent_id
+required_fields_present,PASS,0 rows missing one or more required analysis fields
+day_offsets_are_integers_or_null,PASS,0 rows have invalid day offsets
+impossible_timelines_flagged,PASS,0 rows flagged with impossible timelines
+closure_before_review_or_action_flagged,PASS,0 rows close before review/action
+grade_a_b_count,PASS,7 rows are Grade A or B
+usable_for_main_analysis_count,PASS,8 rows usable for main analysis
+evidence_strength_distribution,PASS,1/11 rows are memory-based or unclear
+missingness_urgency,PASS,2/11 rows missing or unclear for urgency
+missingness_recommended_window,PASS,1/11 rows missing or unclear for recommended_window
+missingness_closure_status,PASS,1/11 rows missing or unclear for closure_status
+missingness_current_status,PASS,1/11 rows missing or unclear for current_status
+missingness_selection_method,PASS,0/11 rows missing or unclear for selection_method

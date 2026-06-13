@@ -1,0 +1,40 @@
+field_name,type,allowed_values,required,description,raw_or_derived,missing_value_rules
+loop_id,uuid,generated UUID,yes,Unique loop identifier,raw,must be present
+respondent_id,uuid,generated UUID,yes,Links loop to respondent/site context,raw,must be present
+loop_family,text,Abnormal diagnostic result; Referral or follow-up,yes,High-level care-loop family,raw,no missing allowed
+loop_type,text,survey enum,yes,Specific care-loop type,raw,Other without clarification lowers quality grade
+urgency,text,Routine; Semi-urgent; Urgent; Critical; Unclear,yes,Clinical urgency at the time of the example,raw,Unclear treated as missing for main analysis
+recommended_window,text,Same day; 1-3 days; 4-7 days; 8-14 days; 15-30 days; >30 days; Unclear,yes,Recommended closure window category,raw,Unclear treated as missing for main analysis
+current_status,text,Resolved; Still open; Lost to follow-up; Escalated; Closed as no action needed; Unknown,yes,Best overall status at audit,raw,Unknown lowers quality grade to D
+review_day_offset,integer,0+,conditional,Days from Day 0 to clinical review,raw,null if review not known or not needed
+contact_day_offset,integer,0+,conditional,Days from Day 0 to patient contact,raw,null if contact not known or not needed
+action_day_offset,integer,0+,conditional,Days from Day 0 to documented action,raw,null if action not known or not documented
+followup_scheduled_day_offset,integer,0+,conditional,Days from Day 0 to follow-up scheduling,raw,null if not scheduled or unknown
+closure_day_offset,integer,0+,conditional,Days from Day 0 to closure/final state,raw,null if still open or unknown
+audit_age_days_if_open,integer,0+,conditional,Age of still-open loop at audit,raw,null unless closure_status = Still open
+evidence_source,text,survey enum,yes,Primary evidence source used for row completion,raw,missing lowers quality grade to D
+confidence,text,Low; Medium; High,yes,Confidence in row accuracy,raw,missing lowers quality grade to D
+selection_method,text,survey enum,yes,How the loop was selected,raw,Unknown sets selection_bias_flag = true
+recommended_window_days_numeric,integer,0; 3; 7; 14; 30; 60,derived,Numeric mapping of recommended window,derived,null when recommended_window = Unclear
+days_to_review,integer,0+,derived,Review timing target for regression,derived,null unless review_status = Reviewed
+days_to_contact,integer,0+,derived,Contact timing target for regression,derived,null unless contact_status = Contacted
+days_to_action,integer,0+,derived,Action timing target for regression,derived,null unless action_status = Action documented
+days_to_followup_scheduled,integer,0+,derived,Scheduling timing target,derived,null unless followup_scheduled_status = Scheduled
+days_to_closure,integer,0+,derived,Closure timing target,derived,null unless closure day is known
+censored_status,integer,0;1,derived,"0 if closure day known, 1 if censored",derived,always computed
+censored_time,integer,0+,derived,Time used for survival analysis,derived,null if neither closure day nor still-open audit age is known
+days_overdue,integer,integer,derived,days_to_closure minus recommended window,derived,null if closure or recommended window unknown
+positive_days_overdue,integer,0+,derived,Non-negative overdue days,derived,null if days_overdue null
+urgency_weight,integer,1;2;3;5,derived,Numeric urgency mapping,derived,null when urgency = Unclear
+risk_weighted_delay,number,0+,derived,positive_days_overdue multiplied by urgency_weight,derived,null unless all source values known
+stall_stage,text,pre_review; patient_contact; documented_action; followup_scheduling; closure; lost_to_followup; escalated; no_action_needed; unresolved_unknown_stage; insufficient_data,derived,Derived point where progression appears to stall,derived,always computed
+evidence_strength,text,record_backed; mixed; memory_based; unclear,derived,Evidence-strength class used for sensitivity analysis,derived,always computed
+selection_bias_flag,boolean,true; false,derived,Flags convenience/high-risk/unknown selection,derived,always computed
+possible_identifier_flag,boolean,true; false,derived,Flags possible identifier-like content in user-entered text,derived,always computed
+usable_for_main_analysis,boolean,true; false,derived,Minimum usable threshold for core modeling set,derived,always computed
+counts_toward_required_loop,boolean,true; false,derived,Frontend/admin required-six loop counter,derived,always computed
+quality_grade,text,A; B; C; D,derived,Row-level data quality grade,derived,always computed
+lost_to_followup_flag,boolean,true; false,derived,Binary modeling target for lost to follow-up,derived,always computed
+escalated_flag,boolean,true; false,derived,Binary modeling target for escalation,derived,always computed
+closure_before_review_or_action_flag,boolean,true; false,derived,Flags impossible or suspicious orderings,derived,always computed
+impossible_timeline_flag,boolean,true; false,derived,Flags invalid negative/impossible timing values,derived,always computed

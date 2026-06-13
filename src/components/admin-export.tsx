@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useState } from "react";
 
 const files = [
+  "raw_wide_export.csv",
+  "analysis_ready_loops.csv",
   "respondents.csv",
   "care_loops.csv",
   "event_timeline.csv",
@@ -11,6 +13,10 @@ const files = [
   "resolution_outcomes.csv",
   "evidence_quality.csv",
   "site_operations.csv",
+  "excluded_or_low_quality_rows.csv",
+  "data_quality_report.csv",
+  "analysis_readiness_report.csv",
+  "data_dictionary.csv",
 ];
 
 export function AdminExport() {
@@ -47,9 +53,9 @@ export function AdminExport() {
         </Link>
         <div className="mt-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">CARE-PROGRESS India</p>
-          <h1 className="mt-2 text-2xl font-semibold">Download CSV files with identifying details removed</h1>
+          <h1 className="mt-2 text-2xl font-semibold">Restricted CSV export</h1>
           <p className="mt-2 text-sm leading-6 text-slate-600">
-            Enter the admin password from the deployment environment. These files contain survey data only, with identifying details removed.
+            Enter the admin password from the deployment environment. Exports include raw tables, analysis-ready loop rows, quality reports, and de-identified survey data only.
           </p>
           <form className="mt-5" onSubmit={(event) => event.preventDefault()}>
             <label className="block text-sm font-medium" htmlFor="password">

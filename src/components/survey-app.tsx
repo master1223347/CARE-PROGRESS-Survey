@@ -46,6 +46,7 @@ import {
   yesNoUnclear,
 } from "@/lib/options";
 import { identifierRiskMessage } from "@/lib/privacy";
+import { getLoopQualityAssessment } from "@/lib/derived";
 import {
   careLoopSchema,
   consentSchema,
@@ -72,7 +73,7 @@ type LoopDraft = Omit<CareLoop, "verification_willingness"> & {
   verification_willingness: "Yes" | "No" | "Maybe" | "" | null;
 };
 type FormErrors = Record<string, string>;
-type LoopStatus = "Not started" | "In progress" | "Complete";
+type LoopStatus = "Not started" | "Saved, incomplete" | "Usable for analysis";
 
 const draftKey = "care-progress-survey-draft-v2";
 const steps: Array<{ key: Step; label: string }> = [
@@ -87,14 +88,14 @@ const steps: Array<{ key: Step; label: string }> = [
 ];
 
 const careLoopExamples = [
-  "abnormal lab result",
+  "abnormal HbA1c result",
+  "abnormal creatinine/eGFR result",
   "abnormal imaging result",
-  "abnormal pathology result",
+  "pathology follow-up",
   "specialist referral",
   "imaging referral",
-  "follow-up appointment request",
-  "repeat test order",
   "post-procedure follow-up",
+  "repeat test order",
 ];
 
 const friendlyOptionLabels: Record<string, string> = {
@@ -352,21 +353,29 @@ export function SurveyApp() {
   }, [step, consent, context, loops, savedLoops, operations, finalNoIdentifiers]);
 
   const loopValidity = useMemo(() => loops.map((loop) => careLoopSchema.safeParse(loop).success), [loops]);
+  const loopQuality = useMemo(
+    () => loops.map((loop) => getLoopQualityAssessment({ ...loop, record_use_basis: consent.record_use_basis })),
+    [consent.record_use_basis, loops],
+  );
   const loopStatuses = useMemo(
     () =>
       loops.map((_, index): LoopStatus => {
-        if (savedLoops.includes(index) && loopValidity[index]) return "Complete";
-        if (savedLoops.includes(index) || editingLoop === index) return "In progress";
+        if (savedLoops.includes(index) && loopValidity[index] && loopQuality[index]?.counts_toward_required_loop) {
+          return "Usable for analysis";
+        }
+        if (savedLoops.includes(index) || editingLoop === index) return "Saved, incomplete";
         return "Not started";
       }),
-    [editingLoop, loopValidity, loops, savedLoops],
+    [editingLoop, loopQuality, loopValidity, loops, savedLoops],
   );
-  const completeRequiredLoops = loopStatuses.slice(0, 6).filter((status) => status === "Complete").length;
-  const submissionLoops = loops.filter((_, index) => index < 6 || loopStatuses[index] === "Complete");
+  const completeRequiredLoops = loopStatuses.slice(0, 6).filter((status) => status === "Usable for analysis").length;
+  const submissionLoops = loops.filter((_, index) => index < 6 || loopStatuses[index] === "Usable for analysis");
   const allFamilies = new Set(loops.slice(0, 6).map((loop) => loop.loop_family));
-  const nextRequiredLoop = Math.max(0, loopStatuses.slice(0, 6).findIndex((status) => status !== "Complete"));
+  const nextRequiredLoop = Math.max(0, loopStatuses.slice(0, 6).findIndex((status) => status !== "Usable for analysis"));
   const nextLoopIndex = nextRequiredLoop === -1 ? 0 : nextRequiredLoop;
   const evidenceReady = submissionLoops.every(hasRequiredEvidence);
+  const evidenceSourceReady = submissionLoops.every((loop) => Boolean(loop.evidence_source));
+  const confidenceReady = submissionLoops.every((loop) => Boolean(loop.confidence));
 
   function goTo(nextStep: Step) {
     setErrors({});
@@ -414,7 +423,7 @@ export function SurveyApp() {
 
   async function submit() {
     if (completeRequiredLoops < 6) {
-      setSubmitStatus("You can submit after 6 finished examples. Extra examples are optional.");
+      setSubmitStatus("You can submit after 6 care examples are usable for analysis. Extra examples are optional.");
       return;
     }
 
@@ -432,7 +441,7 @@ export function SurveyApp() {
       setSubmitStatus("Please correct the highlighted fields before submitting.");
       return;
     }
-    setSubmitStatus("Sending your privacy-safe survey...");
+    setSubmitStatus("Submitting de-identified research audit...");
     const response = await fetch("/api/submissions", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -457,7 +466,7 @@ export function SurveyApp() {
         {step === "intro" ? <Intro onStart={() => goTo("consent")} /> : null}
 
         {step === "consent" ? (
-          <Screen title="Privacy and research consent" eyebrow="Step 1" description="This survey uses study codes and role categories only. Do not enter names, phone numbers, medical record numbers, or patient documents.">
+          <Screen title="Consent and de-identification" eyebrow="Step 1" description="This de-identified research audit uses example codes and role categories only. Do not enter patient-identifying information or clinical documents.">
             <PrivacyReminder />
             <FieldCard title="Please confirm these points" description="Both boxes must be checked before you continue.">
               <Checkbox
@@ -467,7 +476,7 @@ export function SurveyApp() {
               />
               <Checkbox
                 checked={Boolean(consent.confirm_research_only)}
-                label="I understand this is a privacy-safe research survey about how outpatient follow-up tasks move through care. It is not a performance review and it does not give clinical advice."
+                label="I understand this is a de-identified research audit of outpatient care-loop progression. It is not a performance evaluation and it does not give clinical advice."
                 onChange={(checked) => setConsent({ ...consent, confirm_research_only: checked as true })}
               />
               <SelectField
@@ -544,6 +553,7 @@ export function SurveyApp() {
             errors={errors}
             index={editingLoop}
             loop={loops[editingLoop]}
+            recordUseBasis={consent.record_use_basis}
             status={loopStatuses[editingLoop]}
             onBack={() => {
               setErrors({});
@@ -581,7 +591,9 @@ export function SurveyApp() {
           <ReviewScreen
             completeRequiredLoops={completeRequiredLoops}
             contextComplete={!Object.keys(validate(contextSchema, context)).length}
+            confidenceReady={confidenceReady}
             evidenceReady={evidenceReady}
+            evidenceSourceReady={evidenceSourceReady}
             finalNoIdentifiers={finalNoIdentifiers}
             loopStatuses={loopStatuses}
             operationsComplete={!Object.keys(validate(operationsSchema, operations)).length}
@@ -608,9 +620,9 @@ function Header({ step, completeLoops }: { step: Step; completeLoops: number }) 
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">CARE-PROGRESS India</p>
           <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">
-            Outpatient follow-up survey
+            Outpatient care-loop progression audit
           </h1>
-          <p className="mt-2 text-sm text-slate-600">Current step: {label}. Required examples finished: {completeLoops}/6.</p>
+          <p className="mt-2 text-sm text-slate-600">Current step: {label}. Required care examples usable for analysis: {completeLoops}/6.</p>
         </div>
         <a className="inline-flex h-11 items-center justify-center rounded-full border border-slate-200 px-4 text-sm font-semibold text-blue-700 hover:border-blue-200 hover:bg-blue-50" href="/admin">
           Data export
@@ -654,26 +666,39 @@ function Intro({ onStart }: { onStart: () => void }) {
   return (
     <Screen
       title="CARE-PROGRESS India"
-      eyebrow="Research survey"
-      description="A privacy-safe survey about how outpatient follow-up tasks move from first event to review, patient contact, action, escalation, and final outcome."
+      eyebrow="De-identified research audit"
+      description="This survey collects specific recent outpatient care examples to study workflow progression under clinical time-sensitivity."
     >
       <div className="grid gap-4 md:grid-cols-3">
         <MetricCard label="Estimated time" value="13-19 minutes" />
-        <MetricCard label="Required work" value="6 recent examples" />
-        <MetricCard label="Privacy" value="No identifying details" />
+        <MetricCard label="Required work" value="6 care examples" />
+        <MetricCard label="Privacy" value="No patient identifiers" />
       </div>
-      <FieldCard title="What you will do" description="Use records if you can. Each row should describe one specific recent example, not what usually happens in general.">
+      <FieldCard title="Purpose of this research">
         <p className="text-sm leading-6 text-slate-700">
-          CARE-PROGRESS India studies how time-sensitive outpatient tasks move through real clinic workflows.
-          You will first confirm the privacy rules, then answer a few questions about your clinic and enter 6 recent examples.
+          This study examines how time-sensitive outpatient care tasks move through real clinic workflows. We are
+          interested in when abnormal results, referrals, and follow-up tasks are reviewed, acted on, escalated,
+          closed, or lost to follow-up.
         </p>
-        <p className="rounded-2xl border border-blue-100 bg-blue-50 p-3 text-sm leading-6 text-blue-950">
-          A care loop means one specific task that began at a known starting point and should later be reviewed,
-          acted on, escalated, finished, or marked as needing no action.
+        <p className="text-sm leading-6 text-slate-700">
+          The goal is to understand workflow progression and delays, not to evaluate individual doctors or clinics.
+        </p>
+      </FieldCard>
+      <FieldCard title="Do not enter patient identifiers">
+        <p className="text-sm leading-6 text-slate-700">
+          Please do not enter names, phone numbers, addresses, Aadhaar numbers, MRNs, screenshots, prescriptions,
+          lab reports, WhatsApp messages, or any identifiable clinical documents. Use made-up example codes such as
+          L001, L002, and L003.
         </p>
         <PrivacyReminder compact />
       </FieldCard>
-      <StickyNav next={onStart} nextLabel="Start survey" />
+      <FieldCard title="What you will do" description="Use records where possible. Each row should describe one specific recent care example, not what usually happens.">
+        <p className="text-sm leading-6 text-slate-700">
+          You will first confirm the privacy rules, then complete respondent and clinic context, followed by 6
+          specific recent care examples. Extra examples are optional.
+        </p>
+      </FieldCard>
+      <StickyNav next={onStart} nextLabel="Begin audit" />
     </Screen>
   );
 }
@@ -681,11 +706,15 @@ function Intro({ onStart }: { onStart: () => void }) {
 function HowThisWorks({ onBack, onNext }: { onBack: () => void; onNext: () => void }) {
   return (
     <Screen
-      title="You will enter 6 recent examples"
-      eyebrow="How this works"
-      description="A care loop means one specific outpatient task that started at a known point and should later be reviewed, acted on, escalated, finished, or marked as needing no action."
+      title="Before the respondent and clinic questions"
+      eyebrow="Study overview"
+      description="Please review what counts as a care example and how the examples should be selected before continuing."
     >
-      <FieldCard title="Examples you can include" description="Choose specific recent examples from the last 30-90 days.">
+      <FieldCard title="What counts as a care example?">
+        <p className="text-sm leading-6 text-slate-700">
+          A care example is one specific recent clinical task that began at a clear point and should later be
+          reviewed, acted on, closed, escalated, or marked as no action needed.
+        </p>
         <div className="grid gap-2 sm:grid-cols-2">
           {careLoopExamples.map((example) => (
             <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700" key={example}>
@@ -694,10 +723,11 @@ function HowThisWorks({ onBack, onNext }: { onBack: () => void; onNext: () => vo
           ))}
         </div>
       </FieldCard>
-      <FieldCard title="How to choose the 6 examples" description="This keeps the dataset fair and useful.">
+      <FieldCard title="How to choose examples">
         <p className="text-sm leading-6 text-slate-700">
-          Please choose specific recent examples from the last 30-90 days, ideally the most recent eligible ones in order.
-          Use records where possible. Do not choose only memorable, severe, successful, or failed cases.
+          Please use recent examples from the last 30-90 days. When possible, choose the most recent eligible
+          examples in order rather than only memorable, severe, successful, or failed cases. This makes the dataset
+          more interpretable.
         </p>
       </FieldCard>
       <StickyNav back={onBack} next={onNext} nextLabel="Continue" />
@@ -708,22 +738,22 @@ function HowThisWorks({ onBack, onNext }: { onBack: () => void; onNext: () => vo
 function CareLoopIntro({ onBack, onNext }: { onBack: () => void; onNext: () => void }) {
   return (
     <Screen
-      title="Before the 6 examples"
-      eyebrow="Step 5"
-      description="You will now enter six recent examples, one at a time. Use records where possible. Each example should take about 2 minutes."
+      title="Before Example 1"
+      eyebrow="Care-example entry"
+      description="You will now enter one specific recent care example at a time. Use records where possible. Each example should take about 2 minutes."
     >
       <div className="grid gap-4 md:grid-cols-2">
         <FieldCard title="Recommended mix" description="Preferred, but not required.">
-          <p className="text-sm leading-6 text-slate-700">Ideally: 3 abnormal test/result examples and 3 referral or follow-up examples.</p>
+          <p className="text-sm leading-6 text-slate-700">Ideally: 3 abnormal diagnostic result examples and 3 referral or follow-up examples.</p>
         </FieldCard>
         <FieldCard title="Helpful definitions" description="These study terms appear in the form.">
           <Definition term="Index event" text="the starting point for this example, such as when a result became available or a referral was created" />
-          <Definition term="Closure" text="the point where the example was finished, escalated, completed, or clearly marked as needing no action" />
-          <Definition term="Handoff" text="the work moved from one person or role to another" />
-          <Definition term="Evidence source" text="what you used to answer, such as the chart, lab log, referral register, or memory" />
+          <Definition term="Closure" text="the point where the example was resolved, escalated, completed, or clearly marked as no action needed" />
+          <Definition term="Handoff" text="the example moved from one person or role to another" />
+          <Definition term="Evidence source" text="what you used to answer the row, such as the chart, lab log, referral register, or memory" />
         </FieldCard>
       </div>
-      <StickyNav back={onBack} next={onNext} nextLabel="Open examples dashboard" />
+      <StickyNav back={onBack} next={onNext} nextLabel="Open care-example dashboard" />
     </Screen>
   );
 }
@@ -751,22 +781,22 @@ function LoopDashboard({
 }) {
   return (
     <Screen
-      title="Six recent examples"
+      title="Care-example dashboard"
       eyebrow="6 required examples"
-      description="Complete one card at a time. You can submit after 6 finished examples. Extra examples are optional."
+      description="Complete one care example at a time. You can submit after 6 examples are usable for analysis. Extra examples are optional."
     >
       <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm font-semibold text-blue-950">Ideally: 3 abnormal test/result examples and 3 referral or follow-up examples</p>
-            <p className="mt-1 text-sm text-blue-900">Use the most recent eligible examples in order from the last 30-90 days.</p>
+            <p className="text-sm font-semibold text-blue-950">Ideally: 3 abnormal diagnostic result examples and 3 referral or follow-up examples</p>
+            <p className="mt-1 text-sm text-blue-900">Use the most recent eligible examples in order from the last 30-90 days. Specific recent examples are required, not the clinic&apos;s usual process.</p>
           </div>
           <button className="h-12 rounded-full bg-blue-700 px-5 text-sm font-semibold text-white hover:bg-blue-800" onClick={() => onOpenLoop(nextLoopIndex)} type="button">
             {completeRequiredLoops === 0 ? "Start Example 1" : completeRequiredLoops < 6 ? `Continue Example ${nextLoopIndex + 1}` : "Review examples"}
           </button>
         </div>
       </div>
-      {allFamilies.size === 1 ? <Notice>Reminder: include both main example types when possible. This is preferred, not required.</Notice> : null}
+      {allFamilies.size === 1 ? <Notice>Reminder: include both main care-loop families when possible. This is preferred, not required.</Notice> : null}
       <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
         {loops.map((loop, index) => (
           <button
@@ -795,7 +825,7 @@ function LoopDashboard({
           Add optional example
         </button>
         <button className="h-12 rounded-full bg-blue-700 px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300" disabled={completeRequiredLoops < 6} onClick={onContinue} type="button">
-          Continue after 6 finished examples ({completeRequiredLoops}/6)
+          Continue after 6 usable examples ({completeRequiredLoops}/6)
         </button>
       </div>
       <StickyNav back={onBack} />
@@ -807,6 +837,7 @@ function LoopEditor({
   errors,
   index,
   loop,
+  recordUseBasis,
   status,
   onBack,
   onChange,
@@ -816,6 +847,7 @@ function LoopEditor({
   errors: FormErrors;
   index: number;
   loop: LoopDraft;
+  recordUseBasis: Consent["record_use_basis"];
   status: LoopStatus;
   onBack: () => void;
   onChange: (loop: LoopDraft) => void;
@@ -823,6 +855,8 @@ function LoopEditor({
   onSave: (mode: "dashboard" | "next") => void;
 }) {
   const riskMessage = identifierRiskMessage(loop.loop_code);
+  const schemaReady = careLoopSchema.safeParse(loop).success;
+  const loopQuality = getLoopQualityAssessment({ ...loop, record_use_basis: recordUseBasis });
 
   function update<K extends keyof LoopDraft>(key: K, value: LoopDraft[K]) {
     const next = { ...loop, [key]: value };
@@ -846,12 +880,12 @@ function LoopEditor({
     <Screen
       title={`Example ${index + 1}: one recent care example`}
       eyebrow={index < 6 ? "Required example" : "Optional example"}
-      description="Use records where possible. This should describe one specific recent example, not the clinic's usual process."
+      description="Use records where possible. This should describe one specific recent care example, not the clinic's usual process."
     >
       <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-4">
         <div>
           <p className="text-sm font-semibold text-slate-950">Current status</p>
-          <p className="text-sm text-slate-500">Save this example when the required answers are complete.</p>
+          <p className="text-sm text-slate-500">A saved example counts toward the required six only when it is usable for analysis.</p>
         </div>
         <StatusBadge status={status} />
       </div>
@@ -869,11 +903,11 @@ function LoopEditor({
         </FieldGrid>
       </FieldCard>
 
-      <FieldCard title="B. Clinical priority" description="These answers help show whether waiting could have mattered clinically.">
+      <FieldCard title="B. Clinical time-sensitivity" description="These fields help interpret whether delay was clinically meaningful.">
         <FieldGrid>
-          <SelectField helper="How quickly did this need attention?" label="How urgent was it?" options={urgencyOptions} value={loop.urgency} onChange={(value) => update("urgency", value as LoopDraft["urgency"])} error={errors.urgency} />
+          <SelectField helper="How time-sensitive was this example clinically?" label="Clinical urgency" options={urgencyOptions} value={loop.urgency} onChange={(value) => update("urgency", value as LoopDraft["urgency"])} error={errors.urgency} />
           <SelectField helper="How serious was the underlying issue, based on what was known then?" label="How serious was it?" options={severityOptions} value={loop.severity} onChange={(value) => update("severity", value as LoopDraft["severity"])} error={errors.severity} />
-          <SelectField helper="How soon should this ideally have reached a final outcome?" label="Ideally, how soon should it have been finished?" options={recommendedWindows} value={loop.recommended_window} onChange={(value) => update("recommended_window", value as LoopDraft["recommended_window"])} error={errors.recommended_window} />
+          <SelectField helper="How soon should this ideally have reached closure?" label="Recommended closure window" options={recommendedWindows} value={loop.recommended_window} onChange={(value) => update("recommended_window", value as LoopDraft["recommended_window"])} error={errors.recommended_window} />
           <SelectField helper="Based on what you know, could waiting have mattered for patient care?" label="Could waiting have affected care?" options={yesNoUnclear} value={loop.delay_affect_care} onChange={(value) => update("delay_affect_care", value as LoopDraft["delay_affect_care"])} error={errors.delay_affect_care} />
         </FieldGrid>
       </FieldCard>
@@ -910,7 +944,7 @@ function LoopEditor({
         </FieldGrid>
       </FieldCard>
 
-      <FieldCard title="E. Outcome" description="Use documented status where available. These answers describe what happened; they are not used to blame any person.">
+      <FieldCard title="E. Outcome" description="Use documented status where available. These fields describe what happened and are not used for performance evaluation.">
         <FieldGrid>
           <SelectField helper="Best overall status at the time of this survey." label="Best overall status now" options={currentStatuses} value={loop.current_status} onChange={(value) => update("current_status", value as LoopDraft["current_status"])} error={errors.current_status} />
           <SelectField label="Was the patient successfully reached?" options={yesNoNotNeededUnknown} value={loop.patient_contacted} onChange={(value) => update("patient_contacted", value as LoopDraft["patient_contacted"])} error={errors.patient_contacted} />
@@ -921,13 +955,28 @@ function LoopEditor({
         </FieldGrid>
       </FieldCard>
 
-      <FieldCard title="F. Source and confidence" description="Record-backed answers are best, but memory-based answers are allowed if you are honest about confidence.">
+      <FieldCard title="F. Evidence source and confidence" description="Record-backed answers are best, but memory-based answers are allowed if marked honestly. Evidence source and confidence help separate stronger rows from weaker rows during analysis.">
         <FieldGrid>
           <SelectField helper="This shows whether the answers came from records or memory." label="What source did you use for these answers?" options={evidenceSources} value={loop.evidence_source} onChange={(value) => update("evidence_source", value as LoopDraft["evidence_source"])} error={errors.evidence_source} />
           <SelectField label="How confident are you in these answers?" options={confidenceOptions} value={loop.confidence} onChange={(value) => update("confidence", value as LoopDraft["confidence"])} error={errors.confidence} />
           <SelectField helper="This shows whether the example was chosen systematically or just because it was easy to find." label="How was this example selected?" options={selectionMethods} value={loop.selection_method} onChange={(value) => update("selection_method", value as LoopDraft["selection_method"])} error={errors.selection_method} />
           <SelectField required={false} label="Could a version with identifying details removed be checked later by a reviewer?" options={["", "Yes", "No", "Maybe"]} value={loop.verification_willingness || ""} onChange={(value) => update("verification_willingness", value as LoopDraft["verification_willingness"])} error={errors.verification_willingness} />
         </FieldGrid>
+      </FieldCard>
+
+      <FieldCard title="Loop quality check" description="This check affects whether the example counts toward the required six examples.">
+        {schemaReady && loopQuality.counts_toward_required_loop ? (
+          <Notice>This example is usable for analysis and will count toward the required examples.</Notice>
+        ) : (
+          <>
+            <Notice>This example has been saved, but too many key fields are unknown for it to count toward the required six examples. If possible, choose another recent example with more record-backed information.</Notice>
+            {loopQuality.missing_requirements.length ? (
+              <p className="text-sm leading-6 text-slate-700">
+                Key items still needed: {loopQuality.missing_requirements.join(", ")}.
+              </p>
+            ) : null}
+          </>
+        )}
       </FieldCard>
 
       <StickyNav
@@ -944,8 +993,10 @@ function LoopEditor({
 
 function ReviewScreen({
   completeRequiredLoops,
+  confidenceReady,
   contextComplete,
   evidenceReady,
+  evidenceSourceReady,
   finalNoIdentifiers,
   loopStatuses,
   operationsComplete,
@@ -957,8 +1008,10 @@ function ReviewScreen({
   onSubmit,
 }: {
   completeRequiredLoops: number;
+  confidenceReady: boolean;
   contextComplete: boolean;
   evidenceReady: boolean;
+  evidenceSourceReady: boolean;
   finalNoIdentifiers: boolean;
   loopStatuses: LoopStatus[];
   operationsComplete: boolean;
@@ -970,16 +1023,28 @@ function ReviewScreen({
   onSubmit: () => void;
 }) {
   return (
-    <Screen title="Check before submitting" eyebrow="Final check" description="You can submit after 6 finished examples. Extra examples are optional. Unfinished optional examples will not be sent.">
-      <FieldCard title="What will be submitted" description="Fix any required item marked below before submitting.">
+    <Screen title="Review and submit" eyebrow="Final verification" description="You can submit after 6 care examples are usable for analysis. Extra examples are optional. Unfinished optional examples will not be submitted.">
+      <FieldCard title="Submission summary" description="Fix any incomplete required item before final submission.">
         <SummaryRow label="About you and your clinic" complete={contextComplete} />
+        <SummaryRow
+          label="6 required care examples complete"
+          complete={completeRequiredLoops === 6}
+          detail={`${completeRequiredLoops}/6 usable for analysis`}
+        />
         {loopStatuses.slice(0, 6).map((status, index) => (
-          <SummaryRow key={index} label={`Example ${index + 1}`} complete={status === "Complete"} detail={status} />
+          <SummaryRow key={index} label={`Care example ${index + 1}`} complete={status === "Usable for analysis"} detail={status} />
         ))}
-        <SummaryRow label="Source and confidence recorded for all submitted examples" complete={evidenceReady} />
+        <SummaryRow label="Evidence source present for all required examples" complete={evidenceSourceReady} />
+        <SummaryRow label="Confidence present for all required examples" complete={confidenceReady} />
         <SummaryRow label="Clinic setup questions" complete={operationsComplete} />
-        <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-600">Examples to submit: {totalLoops}. Required examples finished: {completeRequiredLoops}/6.</div>
+        <SummaryRow label="Patient identifiers not entered confirmation" complete={finalNoIdentifiers} detail={finalNoIdentifiers ? "Confirmed" : "Pending"} />
+        <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-600">Rows to submit: {totalLoops}. Required care examples usable for analysis: {completeRequiredLoops}/6.</div>
       </FieldCard>
+      {!evidenceReady ? (
+        <Notice>
+          One or more submitted examples still need evidence source, confidence, or selection method details to be fully interpretable.
+        </Notice>
+      ) : null}
       <FieldCard title="Final privacy confirmation">
         <Checkbox
           checked={finalNoIdentifiers}
@@ -993,7 +1058,7 @@ function ReviewScreen({
         back={onBack}
         next={onSubmit}
         nextDisabled={completeRequiredLoops < 6 || !finalNoIdentifiers}
-        nextLabel="Submit survey"
+        nextLabel="Submit de-identified research audit"
       />
     </Screen>
   );
@@ -1002,11 +1067,11 @@ function ReviewScreen({
 function ThankYou({ submissionId }: { submissionId: string }) {
   return (
     <Screen
-      title="Survey received"
+      title="Submission received"
       eyebrow="Thank you"
-      description="Thank you for contributing to CARE-PROGRESS India. Your response helps us understand how time-sensitive outpatient follow-up moves through review, patient contact, action, and final outcome."
+      description="Thank you for contributing to the CARE-PROGRESS India research pilot. Your response helps study how time-sensitive outpatient care tasks progress through review, patient contact, action, escalation, and closure."
     >
-      <FieldCard title="What happens next" description="This website does not give clinical advice or patient-specific recommendations.">
+      <FieldCard title="What happens next" description="This survey is for research and dataset development only. It is not a clinical decision-making tool and is not used to evaluate individual doctors or clinics.">
         {submissionId ? <p className="text-xs text-slate-500">Submission ID: {submissionId}</p> : null}
       </FieldCard>
     </Screen>
@@ -1052,13 +1117,13 @@ function TimelineExplainer() {
   return (
     <FieldCard title="Use day counts, not calendar dates" description="The index event is the starting day for this example, such as when a result became available or a referral was created.">
       <p className="text-sm leading-6 text-slate-700">
-        Day 0 is the starting day. If review happened the same day, enter 0. If it happened three days later, enter 3.
-        If you do not know the number or the step was not needed, use the status field instead of guessing.
+        The starting point is Day 0. If a result became available and was reviewed the same day, review day = 0.
+        If it was reviewed three days later, review day = 3. If you do not know, choose Unknown rather than guessing.
       </p>
       <div className="grid gap-2 sm:grid-cols-3">
         <MetricCard label="Same day" value="0" />
-        <MetricCard label="3 days later" value="3" />
-        <MetricCard label="1 week later" value="7" />
+        <MetricCard label="Three days later" value="3" />
+        <MetricCard label="One week later" value="7" />
       </div>
     </FieldCard>
   );
@@ -1111,8 +1176,8 @@ function SummaryRow({ complete, detail, label }: { complete: boolean; detail?: s
 
 function StatusBadge({ status }: { status: LoopStatus }) {
   const classes = {
-    Complete: "bg-emerald-100 text-emerald-800",
-    "In progress": "bg-amber-100 text-amber-900",
+    "Usable for analysis": "bg-emerald-100 text-emerald-800",
+    "Saved, incomplete": "bg-amber-100 text-amber-900",
     "Not started": "bg-slate-100 text-slate-600",
   }[status];
   return <span className={`rounded-full px-3 py-1 text-xs font-semibold ${classes}`}>{status}</span>;

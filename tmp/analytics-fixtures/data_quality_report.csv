@@ -1,0 +1,36 @@
+section,metric,group,value
+overview,total_respondents,,11
+overview,total_care_loops,,11
+distribution,loops_by_family,Abnormal diagnostic result,8
+distribution,loops_by_family,Referral or follow-up,3
+distribution,loops_by_type,Abnormal lab,8
+distribution,loops_by_type,Specialist referral,2
+distribution,loops_by_type,Imaging referral,1
+distribution,loops_by_urgency,Routine,5
+distribution,loops_by_urgency,Urgent,2
+distribution,loops_by_urgency,Semi-urgent,1
+distribution,loops_by_urgency,Critical,1
+distribution,loops_by_urgency,Unclear,2
+distribution,loops_by_evidence_strength,record_backed,10
+distribution,loops_by_evidence_strength,memory_based,1
+distribution,loops_by_quality_grade,A,7
+distribution,loops_by_quality_grade,C,1
+distribution,loops_by_quality_grade,D,3
+quality,percent_grade_a,,63.64
+quality,percent_grade_b,,0
+quality,percent_grade_c,,9.09
+quality,percent_grade_d,,27.27
+quality,percent_usable_for_main_analysis,,72.73
+quality,percent_memory_based,,9.09
+missingness,percent_missing_closure_status,,9.09
+missingness,percent_missing_recommended_window,,9.09
+missingness,percent_missing_urgency,,18.18
+missingness,percent_still_open_or_censored,,45.45
+missingness,percent_patient_contact_unknown,,18.18
+missingness,percent_evidence_source_other,,0
+bias,percent_selection_method_high_risk_examples_only,,9.09
+quality,rows_removed_or_excluded_from_main_analysis,,3
+timing,median_days_to_closure,Abnormal diagnostic result,4.5
+timing,median_risk_weighted_delay,Abnormal diagnostic result,0
+timing,median_days_to_closure,Referral or follow-up,
+timing,median_risk_weighted_delay,Referral or follow-up,
