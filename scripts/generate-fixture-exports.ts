@@ -6,6 +6,23 @@ import { addDerivedVariables, getLoopQualityAssessment } from "../src/lib/derive
 import { careLoopSchema } from "../src/lib/schemas";
 
 type Row = Record<string, unknown>;
+type FixtureRespondent = {
+  respondent_id: string;
+  submission_id: string;
+  created_at: string;
+  record_use_basis: string;
+  respondent_role: string;
+  specialty: string;
+  practice_setting: string;
+  opd_volume: string;
+  support_staff: string[];
+  record_system: string;
+  lab_tracking: string;
+  referral_tracking: string;
+  followup_tracking: string;
+  communication_channel: string;
+  digital_maturity: number;
+};
 type LoopStatus = "Not started" | "Saved, incomplete" | "Usable for analysis";
 type DerivedQualityField =
   | "quality_grade"
@@ -42,7 +59,7 @@ function toCsv(rows: Row[], columns: readonly string[]) {
   return [columns.join(","), ...rows.map((row) => columns.map((column) => escapeCsv(row[column])).join(","))].join("\n");
 }
 
-function baseRespondent(index: number) {
+function baseRespondent(index: number): FixtureRespondent {
   return {
     respondent_id: randomUUID(),
     submission_id: randomUUID(),
@@ -62,7 +79,7 @@ function baseRespondent(index: number) {
   };
 }
 
-function baseLoop(respondent: ReturnType<typeof baseRespondent>, loopNumber: number, caseName: string) {
+function baseLoop(respondent: FixtureRespondent, loopNumber: number, caseName: string): Row {
   return {
     _case_name: caseName,
     loop_id: randomUUID(),
