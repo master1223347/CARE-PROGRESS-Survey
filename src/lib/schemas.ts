@@ -83,7 +83,7 @@ export const contextSchema = z.object({
 
 export const careLoopSchema = z
   .object({
-    loop_code: z.string().trim().min(1).max(20).regex(/^L\d{3}$/i, "Use an L001-style loop code.").refine((value) => !hasIdentifierRisk(value), "Loop code appears to contain an identifier."),
+    loop_code: z.string().trim().min(1).max(20).regex(/^L\d{3}$/i, "Use a made-up code like L001.").refine((value) => !hasIdentifierRisk(value), "This code looks like it may contain identifying information."),
     loop_family: enumOf(loopFamilies),
     loop_type: enumOf(loopTypes),
     loop_specialty: enumOf(loopSpecialties),
@@ -127,33 +127,33 @@ export const careLoopSchema = z
   })
   .superRefine((loop, ctx) => {
     if (loop.loop_family === "Abnormal diagnostic result" && (!loop.test_category || loop.test_category === "N/A")) {
-      ctx.addIssue({ code: "custom", path: ["test_category"], message: "Select the abnormal-result test category." });
+      ctx.addIssue({ code: "custom", path: ["test_category"], message: "Choose the test or result category." });
     }
     if (loop.loop_family === "Referral or follow-up" && (!loop.referral_category || loop.referral_category === "N/A")) {
-      ctx.addIssue({ code: "custom", path: ["referral_category"], message: "Select the referral/follow-up category." });
+      ctx.addIssue({ code: "custom", path: ["referral_category"], message: "Choose the referral or follow-up category." });
     }
     if (loop.review_status === "Reviewed" && loop.review_day_offset == null) {
-      ctx.addIssue({ code: "custom", path: ["review_day_offset"], message: "Enter the review day offset." });
+      ctx.addIssue({ code: "custom", path: ["review_day_offset"], message: "Enter how many days after Day 0 it was reviewed." });
     }
     if (loop.contact_status === "Contacted" && loop.contact_day_offset == null) {
-      ctx.addIssue({ code: "custom", path: ["contact_day_offset"], message: "Enter the patient contact day offset." });
+      ctx.addIssue({ code: "custom", path: ["contact_day_offset"], message: "Enter how many days after Day 0 the patient was contacted." });
     }
     if (loop.action_status === "Action documented" && loop.action_day_offset == null) {
-      ctx.addIssue({ code: "custom", path: ["action_day_offset"], message: "Enter the documented action day offset." });
+      ctx.addIssue({ code: "custom", path: ["action_day_offset"], message: "Enter how many days after Day 0 the action was recorded." });
     }
     if (loop.followup_scheduled_status === "Scheduled" && loop.followup_scheduled_day_offset == null) {
-      ctx.addIssue({ code: "custom", path: ["followup_scheduled_day_offset"], message: "Enter the scheduled follow-up day offset." });
+      ctx.addIssue({ code: "custom", path: ["followup_scheduled_day_offset"], message: "Enter how many days after Day 0 follow-up was scheduled." });
     }
     if (["Closed", "Escalated", "Lost to follow-up", "Closed as no action needed"].includes(loop.closure_status) && loop.closure_day_offset == null) {
-      ctx.addIssue({ code: "custom", path: ["closure_day_offset"], message: "Enter the closure day offset." });
+      ctx.addIssue({ code: "custom", path: ["closure_day_offset"], message: "Enter how many days after Day 0 it reached this final status." });
     }
     if (loop.closure_status === "Still open" && loop.audit_age_days_if_open == null) {
-      ctx.addIssue({ code: "custom", path: ["audit_age_days_if_open"], message: "Enter the audit age for still-open loops." });
+      ctx.addIssue({ code: "custom", path: ["audit_age_days_if_open"], message: "Enter how many days old it was when you reviewed this example." });
     }
     const knownClosure = loop.closure_day_offset;
     const priorOffsets = [loop.review_day_offset, loop.action_day_offset].filter((value): value is number => value != null);
     if (knownClosure != null && priorOffsets.some((offset) => knownClosure < offset)) {
-      ctx.addIssue({ code: "custom", path: ["closure_day_offset"], message: "Closure day cannot be earlier than known review/action days." });
+      ctx.addIssue({ code: "custom", path: ["closure_day_offset"], message: "The final-status day cannot be earlier than the review or action day." });
     }
   });
 

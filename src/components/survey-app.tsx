@@ -76,14 +76,14 @@ type LoopStatus = "Not started" | "In progress" | "Complete";
 
 const draftKey = "care-progress-survey-draft-v2";
 const steps: Array<{ key: Step; label: string }> = [
-  { key: "intro", label: "Start" },
-  { key: "consent", label: "Consent" },
-  { key: "how", label: "How it works" },
-  { key: "context", label: "Context" },
-  { key: "loopIntro", label: "Care loops" },
-  { key: "loops", label: "Loops" },
-  { key: "operations", label: "Operations" },
-  { key: "review", label: "Review" },
+  { key: "intro", label: "Welcome" },
+  { key: "consent", label: "Privacy" },
+  { key: "how", label: "Examples" },
+  { key: "context", label: "About You" },
+  { key: "loopIntro", label: "Before You Start" },
+  { key: "loops", label: "6 Examples" },
+  { key: "operations", label: "Clinic Setup" },
+  { key: "review", label: "Final Check" },
 ];
 
 const careLoopExamples = [
@@ -96,6 +96,114 @@ const careLoopExamples = [
   "repeat test order",
   "post-procedure follow-up",
 ];
+
+const friendlyOptionLabels: Record<string, string> = {
+  "": "No response",
+  Admin: "Administrator",
+  "Medical assistant": "Medical assistant (MA)",
+  "Clinic coordinator": "Clinic coordinator",
+  "Lab staff": "Lab staff",
+  "OB-GYN": "Obstetrics/gynecology (OB-GYN)",
+  "Private hospital OPD": "Private hospital outpatient department (OPD)",
+  "Government hospital OPD": "Government hospital outpatient department (OPD)",
+  MA: "Medical assistant (MA)",
+  Coordinator: "Coordinator / care coordinator",
+  "Lab coordinator": "Lab coordinator",
+  "Clinic software": "Clinic software",
+  EHR: "Electronic health record (EHR)",
+  "EHR task": "EHR task or reminder",
+  "WhatsApp/photos": "WhatsApp or photos",
+  "Paper log": "Paper log or register",
+  "Physician memory": "Doctor remembers without a formal tracking system",
+  "Staff memory": "Staff remember without a formal tracking system",
+  Mixed: "More than one method",
+  "Portal/app": "Patient portal or app",
+  "1 mostly paper": "1: Mostly paper",
+  "2 paper + phone": "2: Paper plus phone",
+  "3 spreadsheet or WhatsApp tracking": "3: Spreadsheet or WhatsApp tracking",
+  "4 clinic software": "4: Clinic software",
+  "5 integrated EHR or task system": "5: Integrated EHR or task system",
+  "Abnormal diagnostic result": "Abnormal test or result",
+  "Referral or follow-up": "Referral or follow-up task",
+  CBC: "Complete blood count (CBC)",
+  HbA1c: "HbA1c / average blood sugar test",
+  "renal function": "Kidney function test",
+  "liver function": "Liver function test",
+  thyroid: "Thyroid test",
+  lipid: "Lipid / cholesterol test",
+  ultrasound: "Ultrasound",
+  "CT/MRI": "CT or MRI scan",
+  pathology: "Pathology result",
+  other: "Other",
+  oncology: "Oncology",
+  endocrinology: "Endocrinology",
+  imaging: "Imaging",
+  surgery: "Surgery",
+  pediatrics: "Pediatrics",
+  "post-procedure": "Post-procedure",
+  "chronic follow-up": "Chronic follow-up",
+  Routine: "Routine",
+  "Semi-urgent": "Semi-urgent",
+  Urgent: "Urgent",
+  Critical: "Critical",
+  Mild: "Mild",
+  Moderate: "Moderate",
+  Severe: "Severe",
+  "Not applicable": "Not applicable",
+  Unclear: "Unclear / cannot judge",
+  Unknown: "Unknown / not sure",
+  "Same day": "Same day (Day 0)",
+  Reviewed: "Reviewed",
+  "Not reviewed": "Not reviewed",
+  "Not needed": "Not needed for this case",
+  Contacted: "Contacted",
+  "Not contacted": "Not contacted",
+  "Action documented": "Action taken and recorded",
+  "No action needed": "No action needed",
+  "Action not documented": "No action recorded",
+  Scheduled: "Scheduled",
+  "Not scheduled": "Not scheduled",
+  Closed: "Closed",
+  "Still open": "Still open",
+  "Lost to follow-up": "Lost to follow-up",
+  Escalated: "Escalated",
+  "Closed as no action needed": "Closed because no action was needed",
+  "System alert": "Software or system alert",
+  Specialist: "Specialist",
+  "Patient not contacted": "Patient was not contacted",
+  Patient: "Patient",
+  "No clear owner": "No one clearly responsible",
+  System: "Software or system",
+  "No formal tracking": "No formal tracking system",
+  Resolved: "Resolved",
+  "Paper chart": "Paper chart",
+  "Lab log": "Lab log",
+  "Referral register": "Referral register",
+  "Appointment register": "Appointment register",
+  "Staff call log": "Staff call log",
+  Low: "Low confidence",
+  Medium: "Medium confidence",
+  High: "High confidence",
+  "Most recent consecutive loops": "Most recent eligible examples in order",
+  "Randomly selected loops": "Randomly selected examples",
+  "Convenience sample": "Chosen because they were easy to find",
+  "High-risk examples only": "High-risk examples only",
+  Sometimes: "Sometimes / depends on the case",
+  Daily: "Daily",
+  Weekly: "Weekly",
+  Occasionally: "Occasionally",
+  none: "None",
+  unknown: "Unknown / not sure",
+  labs: "Lab results",
+  referrals: "Referral records",
+  "follow-ups": "Follow-up records",
+  "contact logs": "Contact logs",
+  Doctor: "Doctor",
+  "clinic owner": "Clinic owner",
+  "hospital admin": "Hospital administrator",
+  "ethics committee": "Ethics or IRB committee",
+  "IT department": "IT team",
+};
 
 const closureOffsetStatuses = ["Closed", "Escalated", "Lost to follow-up", "Closed as no action needed"];
 
@@ -186,7 +294,7 @@ function friendlyErrorMessage(key: string, message: string) {
       return "Day offsets cannot be negative. Use 0 for the same day.";
     }
   }
-  if (message.includes("Invalid input")) return "Please choose one of the listed options.";
+  if (message.includes("Invalid input")) return "Please choose one of the listed answers.";
   return message;
 }
 
@@ -306,7 +414,7 @@ export function SurveyApp() {
 
   async function submit() {
     if (completeRequiredLoops < 6) {
-      setSubmitStatus("You can submit after 6 complete loops. Extra loops are optional.");
+      setSubmitStatus("You can submit after 6 finished examples. Extra examples are optional.");
       return;
     }
 
@@ -324,7 +432,7 @@ export function SurveyApp() {
       setSubmitStatus("Please correct the highlighted fields before submitting.");
       return;
     }
-    setSubmitStatus("Submitting secure de-identified audit...");
+    setSubmitStatus("Sending your privacy-safe survey...");
     const response = await fetch("/api/submissions", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -349,9 +457,9 @@ export function SurveyApp() {
         {step === "intro" ? <Intro onStart={() => goTo("consent")} /> : null}
 
         {step === "consent" ? (
-          <Screen title="Consent and de-identification" eyebrow="Step 1" description="This research form uses loop codes and broad role categories only. No patient identifiers or clinical documents should be entered.">
+          <Screen title="Privacy and research consent" eyebrow="Step 1" description="This survey uses study codes and role categories only. Do not enter names, phone numbers, medical record numbers, or patient documents.">
             <PrivacyReminder />
-            <FieldCard title="Before you begin" description="Both confirmations are required to continue.">
+            <FieldCard title="Please confirm these points" description="Both boxes must be checked before you continue.">
               <Checkbox
                 checked={Boolean(consent.confirm_no_identifiers)}
                 label="I confirm that I will not enter patient names, phone numbers, addresses, Aadhaar numbers, medical record numbers, prescription images, lab-report photos, WhatsApp screenshots, raw clinical notes, or other identifiable information."
@@ -359,13 +467,13 @@ export function SurveyApp() {
               />
               <Checkbox
                 checked={Boolean(consent.confirm_research_only)}
-                label="I understand this is a de-identified research audit of outpatient care-loop progression, not a doctor performance evaluation and not a clinical decision-making tool."
+                label="I understand this is a privacy-safe research survey about how outpatient follow-up tasks move through care. It is not a performance review and it does not give clinical advice."
                 onChange={(checked) => setConsent({ ...consent, confirm_research_only: checked as true })}
               />
               <SelectField
                 error={errors.record_use_basis}
-                helper="Records are preferred. Memory is acceptable when records are unavailable; mark confidence honestly later."
-                label="Are you using clinic records where possible?"
+                helper="Records are best. If you need to rely partly on memory, that is okay. You will record your confidence later."
+                label="Will you use clinic records wherever possible?"
                 options={recordUseBasisOptions}
                 value={consent.record_use_basis}
                 onChange={(value) => setConsent({ ...consent, record_use_basis: value as Consent["record_use_basis"] })}
@@ -379,27 +487,27 @@ export function SurveyApp() {
         {step === "how" ? <HowThisWorks onBack={() => goTo("consent")} onNext={() => goTo("context")} /> : null}
 
         {step === "context" ? (
-          <Screen title="Respondent and site context" eyebrow="Step 3" description="A short context module helps interpret loop timing by role, clinic setting, tracking systems, and digital maturity.">
+          <Screen title="About you and your clinic" eyebrow="Step 3" description="This short section helps interpret timing by role, clinic setup, tracking method, and how paper- or software-based the workflow is.">
             <PrivacyReminder compact />
-            <FieldCard title="Respondent and clinic" description="Choose the best matching category. Do not enter staff names.">
+            <FieldCard title="About the respondent and clinic" description="Choose the closest category. Use job roles only, not staff names.">
               <FieldGrid>
-                <SelectField label="Respondent role" options={respondentRoles} value={context.respondent_role} onChange={(value) => setContext({ ...context, respondent_role: value as RespondentContext["respondent_role"] })} error={errors.respondent_role} />
+                <SelectField label="Your role" options={respondentRoles} value={context.respondent_role} onChange={(value) => setContext({ ...context, respondent_role: value as RespondentContext["respondent_role"] })} error={errors.respondent_role} />
                 <SelectField label="Specialty or service area" options={specialties} value={context.specialty} onChange={(value) => setContext({ ...context, specialty: value as RespondentContext["specialty"] })} error={errors.specialty} />
-                <SelectField label="Practice setting" options={practiceSettings} value={context.practice_setting} onChange={(value) => setContext({ ...context, practice_setting: value as RespondentContext["practice_setting"] })} error={errors.practice_setting} />
-                <SelectField label="Average outpatient volume per day" options={opdVolumes} value={context.opd_volume} onChange={(value) => setContext({ ...context, opd_volume: value as RespondentContext["opd_volume"] })} error={errors.opd_volume} />
+                <SelectField label="Type of clinic or outpatient setting" options={practiceSettings} value={context.practice_setting} onChange={(value) => setContext({ ...context, practice_setting: value as RespondentContext["practice_setting"] })} error={errors.practice_setting} />
+                <SelectField label="About how many outpatients are seen per day?" options={opdVolumes} value={context.opd_volume} onChange={(value) => setContext({ ...context, opd_volume: value as RespondentContext["opd_volume"] })} error={errors.opd_volume} />
               </FieldGrid>
             </FieldCard>
-            <FieldCard title="Tracking and communication" description="These fields describe the usual site setup, not an individual patient.">
+            <FieldCard title="Tracking and communication" description="Answer about the clinic's usual setup overall, not one patient.">
               <FieldGrid>
-                <SelectField label="Main record system" options={["Paper", "EHR", "Clinic software", "WhatsApp/photos", "Mixed", "Other"]} value={context.record_system} onChange={(value) => setContext({ ...context, record_system: value as RespondentContext["record_system"] })} error={errors.record_system} />
-                <SelectField label="Lab/result tracking method" options={trackingOptions} value={context.lab_tracking} onChange={(value) => setContext({ ...context, lab_tracking: value as RespondentContext["lab_tracking"] })} error={errors.lab_tracking} />
-                <SelectField label="Referral tracking method" options={trackingOptions} value={context.referral_tracking} onChange={(value) => setContext({ ...context, referral_tracking: value as RespondentContext["referral_tracking"] })} error={errors.referral_tracking} />
-                <SelectField label="Follow-up tracking method" options={trackingOptions} value={context.followup_tracking} onChange={(value) => setContext({ ...context, followup_tracking: value as RespondentContext["followup_tracking"] })} error={errors.followup_tracking} />
-                <SelectField label="Main patient communication channel" options={communicationChannels} value={context.communication_channel} onChange={(value) => setContext({ ...context, communication_channel: value as RespondentContext["communication_channel"] })} error={errors.communication_channel} />
-                <SelectField label="Digital maturity score" options={digitalMaturityOptions} value={digitalMaturityOptions[context.digital_maturity - 1]} onChange={(value) => setContext({ ...context, digital_maturity: Number(value.charAt(0)) })} error={errors.digital_maturity} />
+                <SelectField helper="EHR means electronic health record." label="Main record system" options={["Paper", "EHR", "Clinic software", "WhatsApp/photos", "Mixed", "Other"]} value={context.record_system} onChange={(value) => setContext({ ...context, record_system: value as RespondentContext["record_system"] })} error={errors.record_system} />
+                <SelectField label="How are lab results usually tracked?" options={trackingOptions} value={context.lab_tracking} onChange={(value) => setContext({ ...context, lab_tracking: value as RespondentContext["lab_tracking"] })} error={errors.lab_tracking} />
+                <SelectField label="How are referrals usually tracked?" options={trackingOptions} value={context.referral_tracking} onChange={(value) => setContext({ ...context, referral_tracking: value as RespondentContext["referral_tracking"] })} error={errors.referral_tracking} />
+                <SelectField label="How are follow-up tasks usually tracked?" options={trackingOptions} value={context.followup_tracking} onChange={(value) => setContext({ ...context, followup_tracking: value as RespondentContext["followup_tracking"] })} error={errors.followup_tracking} />
+                <SelectField label="Main way patients are usually contacted" options={communicationChannels} value={context.communication_channel} onChange={(value) => setContext({ ...context, communication_channel: value as RespondentContext["communication_channel"] })} error={errors.communication_channel} />
+                <SelectField helper="Pick the option that best matches the clinic's usual follow-up setup." label="How digital is the clinic's follow-up system?" options={digitalMaturityOptions} value={digitalMaturityOptions[context.digital_maturity - 1]} onChange={(value) => setContext({ ...context, digital_maturity: Number(value.charAt(0)) })} error={errors.digital_maturity} />
               </FieldGrid>
               <CheckboxGroup
-                label="Support staff usually available"
+                label="Support staff usually available for follow-up work"
                 options={supportStaffOptions}
                 values={context.support_staff}
                 onChange={(values) => setContext({ ...context, support_staff: values as RespondentContext["support_staff"] })}
@@ -454,18 +562,18 @@ export function SurveyApp() {
         ) : null}
 
         {step === "operations" ? (
-          <Screen title="Operational readiness and verification" eyebrow="Step 8" description="These questions describe clinic-level follow-up structure and future de-identified data feasibility.">
+          <Screen title="Clinic follow-up setup" eyebrow="Step 8" description="These questions are about how the clinic handles follow-up overall and whether data with identifying details removed might be shared later.">
             <PrivacyReminder compact />
-            <FieldCard title="Operational structure" description="Use role/category answers only. Do not enter staff names.">
+            <FieldCard title="Clinic-level setup" description="Use roles or departments only. Do not enter staff names.">
               <FieldGrid>
-                <SelectField label="Named person responsible for abnormal result follow-up?" options={ownerExistsOptions} value={operations.abnormal_result_owner_exists} onChange={(value) => setOperations({ ...operations, abnormal_result_owner_exists: value as SiteOperations["abnormal_result_owner_exists"] })} error={errors.abnormal_result_owner_exists} />
-                <SelectField label="Named person responsible for referral completion?" options={ownerExistsOptions} value={operations.referral_owner_exists} onChange={(value) => setOperations({ ...operations, referral_owner_exists: value as SiteOperations["referral_owner_exists"] })} error={errors.referral_owner_exists} />
-                <SelectField label="Are unresolved loops reviewed at end of day/week?" options={unresolvedReviewCadenceOptions} value={operations.unresolved_review_cadence} onChange={(value) => setOperations({ ...operations, unresolved_review_cadence: value as SiteOperations["unresolved_review_cadence"] })} error={errors.unresolved_review_cadence} />
-                <SelectField label="Can the clinic export de-identified logs in the future?" options={futureExportAvailableOptions} value={operations.future_export_available} onChange={(value) => setOperations({ ...operations, future_export_available: value as SiteOperations["future_export_available"] })} error={errors.future_export_available} />
-                <SelectField label="Who would approve future data sharing?" options={futureApprovalPathOptions} value={operations.future_approval_path} onChange={(value) => setOperations({ ...operations, future_approval_path: value as SiteOperations["future_approval_path"] })} error={errors.future_approval_path} />
+                <SelectField label="Is there usually a clearly named person responsible for following up abnormal results?" options={ownerExistsOptions} value={operations.abnormal_result_owner_exists} onChange={(value) => setOperations({ ...operations, abnormal_result_owner_exists: value as SiteOperations["abnormal_result_owner_exists"] })} error={errors.abnormal_result_owner_exists} />
+                <SelectField label="Is there usually a clearly named person responsible for making sure referrals are completed?" options={ownerExistsOptions} value={operations.referral_owner_exists} onChange={(value) => setOperations({ ...operations, referral_owner_exists: value as SiteOperations["referral_owner_exists"] })} error={errors.referral_owner_exists} />
+                <SelectField label="Are still-open items usually reviewed daily or weekly?" options={unresolvedReviewCadenceOptions} value={operations.unresolved_review_cadence} onChange={(value) => setOperations({ ...operations, unresolved_review_cadence: value as SiteOperations["unresolved_review_cadence"] })} error={errors.unresolved_review_cadence} />
+                <SelectField label="Could the clinic share logs with identifying details removed in the future?" options={futureExportAvailableOptions} value={operations.future_export_available} onChange={(value) => setOperations({ ...operations, future_export_available: value as SiteOperations["future_export_available"] })} error={errors.future_export_available} />
+                <SelectField label="What group would need to approve future data sharing?" options={futureApprovalPathOptions} value={operations.future_approval_path} onChange={(value) => setOperations({ ...operations, future_approval_path: value as SiteOperations["future_approval_path"] })} error={errors.future_approval_path} />
               </FieldGrid>
             </FieldCard>
-            <StickyNav back={() => goTo("loops")} next={advanceFromOperations} nextLabel="Review submission" />
+            <StickyNav back={() => goTo("loops")} next={advanceFromOperations} nextLabel="Review answers" />
           </Screen>
         ) : null}
 
@@ -500,12 +608,12 @@ function Header({ step, completeLoops }: { step: Step; completeLoops: number }) 
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">CARE-PROGRESS India</p>
           <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">
-            Outpatient Care-Loop Progression Audit
+            Outpatient follow-up survey
           </h1>
-          <p className="mt-2 text-sm text-slate-600">Current step: {label}. Required loops complete: {completeLoops}/6.</p>
+          <p className="mt-2 text-sm text-slate-600">Current step: {label}. Required examples finished: {completeLoops}/6.</p>
         </div>
         <a className="inline-flex h-11 items-center justify-center rounded-full border border-slate-200 px-4 text-sm font-semibold text-blue-700 hover:border-blue-200 hover:bg-blue-50" href="/admin">
-          Admin export
+          Data export
         </a>
       </div>
     </header>
@@ -545,27 +653,27 @@ function Progress({ current }: { current: Step }) {
 function Intro({ onStart }: { onStart: () => void }) {
   return (
     <Screen
-      title="CARE-PROGRESS India: Outpatient Care-Loop Progression Audit"
-      eyebrow="Clinical research form"
-      description="A de-identified survey for understanding how outpatient tasks move through review, contact, action, escalation, and closure."
+      title="CARE-PROGRESS India"
+      eyebrow="Research survey"
+      description="A privacy-safe survey about how outpatient follow-up tasks move from first event to review, patient contact, action, escalation, and final outcome."
     >
       <div className="grid gap-4 md:grid-cols-3">
         <MetricCard label="Estimated time" value="13-19 minutes" />
-        <MetricCard label="Required work" value="6 loop audits" />
-        <MetricCard label="Privacy" value="No identifiers" />
+        <MetricCard label="Required work" value="6 recent examples" />
+        <MetricCard label="Privacy" value="No identifying details" />
       </div>
-      <FieldCard title="What you will do" description="Use records where possible. Each row should describe one specific recent loop, not what usually happens.">
+      <FieldCard title="What you will do" description="Use records if you can. Each row should describe one specific recent example, not what usually happens in general.">
         <p className="text-sm leading-6 text-slate-700">
-          CARE-PROGRESS India studies how time-sensitive outpatient care loops progress through real clinical workflows.
-          You will first confirm de-identification rules, then complete site context and 6 recent loop audits.
+          CARE-PROGRESS India studies how time-sensitive outpatient tasks move through real clinic workflows.
+          You will first confirm the privacy rules, then answer a few questions about your clinic and enter 6 recent examples.
         </p>
         <p className="rounded-2xl border border-blue-100 bg-blue-50 p-3 text-sm leading-6 text-blue-950">
-          A care loop is one specific clinical task that began at a known point and should later be reviewed,
-          acted on, escalated, closed, or marked as no action needed.
+          A care loop means one specific task that began at a known starting point and should later be reviewed,
+          acted on, escalated, finished, or marked as needing no action.
         </p>
         <PrivacyReminder compact />
       </FieldCard>
-      <StickyNav next={onStart} nextLabel="Start de-identified audit" />
+      <StickyNav next={onStart} nextLabel="Start survey" />
     </Screen>
   );
 }
@@ -573,11 +681,11 @@ function Intro({ onStart }: { onStart: () => void }) {
 function HowThisWorks({ onBack, onNext }: { onBack: () => void; onNext: () => void }) {
   return (
     <Screen
-      title="You'll audit 6 recent care loops"
+      title="You will enter 6 recent examples"
       eyebrow="How this works"
-      description="A care loop is a clinical task that started at one point and should later be reviewed, acted on, escalated, closed, or marked as no action needed."
+      description="A care loop means one specific outpatient task that started at a known point and should later be reviewed, acted on, escalated, finished, or marked as needing no action."
     >
-      <FieldCard title="Examples of eligible care loops" description="Choose specific recent examples from the last 30-90 days.">
+      <FieldCard title="Examples you can include" description="Choose specific recent examples from the last 30-90 days.">
         <div className="grid gap-2 sm:grid-cols-2">
           {careLoopExamples.map((example) => (
             <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700" key={example}>
@@ -586,13 +694,13 @@ function HowThisWorks({ onBack, onNext }: { onBack: () => void; onNext: () => vo
           ))}
         </div>
       </FieldCard>
-      <FieldCard title="Selection rule" description="This keeps the research dataset interpretable.">
+      <FieldCard title="How to choose the 6 examples" description="This keeps the dataset fair and useful.">
         <p className="text-sm leading-6 text-slate-700">
-          Please choose recent specific loops from the last 30-90 days. Use records where possible. Do not choose only
-          memorable, severe, successful, or failed cases.
+          Please choose specific recent examples from the last 30-90 days, ideally the most recent eligible ones in order.
+          Use records where possible. Do not choose only memorable, severe, successful, or failed cases.
         </p>
       </FieldCard>
-      <StickyNav back={onBack} next={onNext} nextLabel="Continue to context" />
+      <StickyNav back={onBack} next={onNext} nextLabel="Continue" />
     </Screen>
   );
 }
@@ -600,22 +708,22 @@ function HowThisWorks({ onBack, onNext }: { onBack: () => void; onNext: () => vo
 function CareLoopIntro({ onBack, onNext }: { onBack: () => void; onNext: () => void }) {
   return (
     <Screen
-      title="Before Loop 1"
-      eyebrow="Care-loop audit"
-      description="Now enter one recent care loop at a time. Use records where possible. Each loop should take about 2 minutes."
+      title="Before the 6 examples"
+      eyebrow="Step 5"
+      description="You will now enter six recent examples, one at a time. Use records where possible. Each example should take about 2 minutes."
     >
       <div className="grid gap-4 md:grid-cols-2">
-        <FieldCard title="Recommended mix" description="This is preferred but not blocking.">
-          <p className="text-sm leading-6 text-slate-700">Ideally: 3 abnormal diagnostic result loops + 3 referral/follow-up loops.</p>
+        <FieldCard title="Recommended mix" description="Preferred, but not required.">
+          <p className="text-sm leading-6 text-slate-700">Ideally: 3 abnormal test/result examples and 3 referral or follow-up examples.</p>
         </FieldCard>
-        <FieldCard title="Helpful definitions" description="These terms appear in the loop form.">
-          <Definition term="Index event" text="the day the loop began, such as when a result became available or a referral was created" />
-          <Definition term="Closure" text="the loop was resolved, escalated, completed, or explicitly marked as no action needed" />
-          <Definition term="Handoff" text="the loop moved from one person or role to another" />
-          <Definition term="Evidence source" text="what you used to answer this row, such as chart, lab log, referral register, or memory" />
+        <FieldCard title="Helpful definitions" description="These study terms appear in the form.">
+          <Definition term="Index event" text="the starting point for this example, such as when a result became available or a referral was created" />
+          <Definition term="Closure" text="the point where the example was finished, escalated, completed, or clearly marked as needing no action" />
+          <Definition term="Handoff" text="the work moved from one person or role to another" />
+          <Definition term="Evidence source" text="what you used to answer, such as the chart, lab log, referral register, or memory" />
         </FieldCard>
       </div>
-      <StickyNav back={onBack} next={onNext} nextLabel="Open loop dashboard" />
+      <StickyNav back={onBack} next={onNext} nextLabel="Open examples dashboard" />
     </Screen>
   );
 }
@@ -643,22 +751,22 @@ function LoopDashboard({
 }) {
   return (
     <Screen
-      title="Care-loop dashboard"
-      eyebrow="6 required loops"
-      description="Complete one card at a time. You can submit after 6 loops. Extra loops are optional."
+      title="Six recent examples"
+      eyebrow="6 required examples"
+      description="Complete one card at a time. You can submit after 6 finished examples. Extra examples are optional."
     >
       <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm font-semibold text-blue-950">Ideally: 3 abnormal diagnostic result loops + 3 referral/follow-up loops</p>
-            <p className="mt-1 text-sm text-blue-900">Use most recent consecutive eligible loops from the last 30-90 days.</p>
+            <p className="text-sm font-semibold text-blue-950">Ideally: 3 abnormal test/result examples and 3 referral or follow-up examples</p>
+            <p className="mt-1 text-sm text-blue-900">Use the most recent eligible examples in order from the last 30-90 days.</p>
           </div>
           <button className="h-12 rounded-full bg-blue-700 px-5 text-sm font-semibold text-white hover:bg-blue-800" onClick={() => onOpenLoop(nextLoopIndex)} type="button">
-            {completeRequiredLoops === 0 ? "Start Loop 1" : completeRequiredLoops < 6 ? `Continue Loop ${nextLoopIndex + 1}` : "Review loops"}
+            {completeRequiredLoops === 0 ? "Start Example 1" : completeRequiredLoops < 6 ? `Continue Example ${nextLoopIndex + 1}` : "Review examples"}
           </button>
         </div>
       </div>
-      {allFamilies.size === 1 ? <Notice>Reminder: include both loop families when possible. This is not blocking.</Notice> : null}
+      {allFamilies.size === 1 ? <Notice>Reminder: include both main example types when possible. This is preferred, not required.</Notice> : null}
       <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
         {loops.map((loop, index) => (
           <button
@@ -669,25 +777,25 @@ function LoopDashboard({
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-slate-950">Loop {index + 1}</p>
+                <p className="text-sm font-semibold text-slate-950">Example {index + 1}</p>
                 <p className="mt-1 text-xs text-slate-500">{index < 6 ? "Required" : "Optional"}</p>
               </div>
               <StatusBadge status={loopStatuses[index]} />
             </div>
-            <p className="mt-4 text-sm font-medium text-slate-800">{loop.loop_family}</p>
-            <p className="mt-1 text-sm text-slate-500">{loop.loop_type}</p>
+            <p className="mt-4 text-sm font-medium text-slate-800">{getOptionLabel(loop.loop_family)}</p>
+            <p className="mt-1 text-sm text-slate-500">{getOptionLabel(loop.loop_type)}</p>
             <p className="mt-4 text-xs font-semibold text-blue-700">
-              {loopStatuses[index] === "Not started" ? `Start Loop ${index + 1}` : `Edit Loop ${index + 1}`}
+              {loopStatuses[index] === "Not started" ? `Start Example ${index + 1}` : `Edit Example ${index + 1}`}
             </p>
           </button>
         ))}
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <button className="h-12 rounded-full border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50" disabled={completeRequiredLoops < 6 || loops.length >= 10} onClick={onAddLoop} type="button">
-          Add optional loop
+          Add optional example
         </button>
         <button className="h-12 rounded-full bg-blue-700 px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300" disabled={completeRequiredLoops < 6} onClick={onContinue} type="button">
-          Continue after 6 complete loops ({completeRequiredLoops}/6)
+          Continue after 6 finished examples ({completeRequiredLoops}/6)
         </button>
       </div>
       <StickyNav back={onBack} />
@@ -736,99 +844,99 @@ function LoopEditor({
 
   return (
     <Screen
-      title={`Loop ${index + 1}: one recent care loop`}
-      eyebrow={index < 6 ? "Required loop" : "Optional loop"}
-      description="Use records where possible. This should describe one specific recent loop, not the clinic's usual process."
+      title={`Example ${index + 1}: one recent care example`}
+      eyebrow={index < 6 ? "Required example" : "Optional example"}
+      description="Use records where possible. This should describe one specific recent example, not the clinic's usual process."
     >
       <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-4">
         <div>
-          <p className="text-sm font-semibold text-slate-950">Current card status</p>
-          <p className="text-sm text-slate-500">Save this loop when the required fields are complete.</p>
+          <p className="text-sm font-semibold text-slate-950">Current status</p>
+          <p className="text-sm text-slate-500">Save this example when the required answers are complete.</p>
         </div>
         <StatusBadge status={status} />
       </div>
 
       <PrivacyReminder compact />
 
-      <FieldCard title="A. Loop basics" description="Identify the loop without using a patient identifier.">
+      <FieldCard title="A. Basic details" description="Describe the example without using any patient-identifying detail.">
         <FieldGrid>
-          <TextField label="Loop code" value={loop.loop_code} onChange={(value) => update("loop_code", value)} error={errors.loop_code || riskMessage} />
-          <SelectField label="Loop family" options={loopFamilies} value={loop.loop_family} onChange={(value) => update("loop_family", value as LoopDraft["loop_family"])} error={errors.loop_family} />
-          <SelectField label="Specific loop type" options={loopTypes} value={loop.loop_type} onChange={(value) => update("loop_type", value as LoopDraft["loop_type"])} error={errors.loop_type} />
-          <SelectField label="Specialty involved" options={loopSpecialties} value={loop.loop_specialty} onChange={(value) => update("loop_specialty", value as LoopDraft["loop_specialty"])} error={errors.loop_specialty} />
-          {loop.loop_family === "Abnormal diagnostic result" ? <SelectField label="Test category" options={testCategories} value={loop.test_category || "N/A"} onChange={(value) => update("test_category", value as LoopDraft["test_category"])} error={errors.test_category} /> : null}
-          {loop.loop_family === "Referral or follow-up" ? <SelectField label="Referral/follow-up category" options={referralCategories} value={loop.referral_category || "N/A"} onChange={(value) => update("referral_category", value as LoopDraft["referral_category"])} error={errors.referral_category} /> : null}
+          <TextField label="Example code" value={loop.loop_code} onChange={(value) => update("loop_code", value)} error={errors.loop_code || riskMessage} />
+          <SelectField helper="Choose the broad type of example first." label="Type of example" options={loopFamilies} value={loop.loop_family} onChange={(value) => update("loop_family", value as LoopDraft["loop_family"])} error={errors.loop_family} />
+          <SelectField helper="Pick the closest match." label="Specific example type" options={loopTypes} value={loop.loop_type} onChange={(value) => update("loop_type", value as LoopDraft["loop_type"])} error={errors.loop_type} />
+          <SelectField label="Which specialty or service area was involved?" options={loopSpecialties} value={loop.loop_specialty} onChange={(value) => update("loop_specialty", value as LoopDraft["loop_specialty"])} error={errors.loop_specialty} />
+          {loop.loop_family === "Abnormal diagnostic result" ? <SelectField label="What kind of test or result was it?" options={testCategories} value={loop.test_category || "N/A"} onChange={(value) => update("test_category", value as LoopDraft["test_category"])} error={errors.test_category} /> : null}
+          {loop.loop_family === "Referral or follow-up" ? <SelectField label="What kind of referral or follow-up was it?" options={referralCategories} value={loop.referral_category || "N/A"} onChange={(value) => update("referral_category", value as LoopDraft["referral_category"])} error={errors.referral_category} /> : null}
         </FieldGrid>
       </FieldCard>
 
-      <FieldCard title="B. Clinical time-sensitivity" description="These fields make delays clinically interpretable.">
+      <FieldCard title="B. Clinical priority" description="These answers help show whether waiting could have mattered clinically.">
         <FieldGrid>
-          <SelectField helper="How time-sensitive was this loop clinically?" label="Clinical urgency" options={urgencyOptions} value={loop.urgency} onChange={(value) => update("urgency", value as LoopDraft["urgency"])} error={errors.urgency} />
-          <SelectField label="Clinical severity" options={severityOptions} value={loop.severity} onChange={(value) => update("severity", value as LoopDraft["severity"])} error={errors.severity} />
-          <SelectField helper="How quickly should this loop ideally have been resolved?" label="Recommended closure window" options={recommendedWindows} value={loop.recommended_window} onChange={(value) => update("recommended_window", value as LoopDraft["recommended_window"])} error={errors.recommended_window} />
-          <SelectField label="Could delay plausibly affect care?" options={yesNoUnclear} value={loop.delay_affect_care} onChange={(value) => update("delay_affect_care", value as LoopDraft["delay_affect_care"])} error={errors.delay_affect_care} />
+          <SelectField helper="How quickly did this need attention?" label="How urgent was it?" options={urgencyOptions} value={loop.urgency} onChange={(value) => update("urgency", value as LoopDraft["urgency"])} error={errors.urgency} />
+          <SelectField helper="How serious was the underlying issue, based on what was known then?" label="How serious was it?" options={severityOptions} value={loop.severity} onChange={(value) => update("severity", value as LoopDraft["severity"])} error={errors.severity} />
+          <SelectField helper="How soon should this ideally have reached a final outcome?" label="Ideally, how soon should it have been finished?" options={recommendedWindows} value={loop.recommended_window} onChange={(value) => update("recommended_window", value as LoopDraft["recommended_window"])} error={errors.recommended_window} />
+          <SelectField helper="Based on what you know, could waiting have mattered for patient care?" label="Could waiting have affected care?" options={yesNoUnclear} value={loop.delay_affect_care} onChange={(value) => update("delay_affect_care", value as LoopDraft["delay_affect_care"])} error={errors.delay_affect_care} />
         </FieldGrid>
       </FieldCard>
 
       <TimelineExplainer />
-      <FieldCard title="C. Timeline" description="Use relative day offsets from the day the loop began.">
+      <FieldCard title="C. Timing" description="Use day counts from the start of the example, not calendar dates.">
         <FieldGrid>
-          <SelectField label="Clinician review status" options={reviewStatuses} value={loop.review_status} onChange={(value) => update("review_status", value as LoopDraft["review_status"])} error={errors.review_status} />
-          {loop.review_status === "Reviewed" ? <NumberField label="Review day offset" value={loop.review_day_offset} onChange={(value) => update("review_day_offset", value)} error={errors.review_day_offset} /> : null}
-          <SelectField label="Patient contact status" options={contactStatuses} value={loop.contact_status} onChange={(value) => update("contact_status", value as LoopDraft["contact_status"])} error={errors.contact_status} />
-          {loop.contact_status === "Contacted" ? <NumberField label="Contact day offset" value={loop.contact_day_offset} onChange={(value) => update("contact_day_offset", value)} error={errors.contact_day_offset} /> : null}
-          <SelectField label="Documented action status" options={actionStatuses} value={loop.action_status} onChange={(value) => update("action_status", value as LoopDraft["action_status"])} error={errors.action_status} />
-          {loop.action_status === "Action documented" ? <NumberField label="Action day offset" value={loop.action_day_offset} onChange={(value) => update("action_day_offset", value)} error={errors.action_day_offset} /> : null}
-          <SelectField label="Follow-up scheduled status" options={followupScheduledStatuses} value={loop.followup_scheduled_status} onChange={(value) => update("followup_scheduled_status", value as LoopDraft["followup_scheduled_status"])} error={errors.followup_scheduled_status} />
-          {loop.followup_scheduled_status === "Scheduled" ? <NumberField label="Follow-up scheduled day offset" value={loop.followup_scheduled_day_offset} onChange={(value) => update("followup_scheduled_day_offset", value)} error={errors.followup_scheduled_day_offset} /> : null}
-          <SelectField helper="What is the current status of this loop?" label="Loop closure status" options={closureStatuses} value={loop.closure_status} onChange={(value) => update("closure_status", value as LoopDraft["closure_status"])} error={errors.closure_status} />
-          {closureOffsetStatuses.includes(loop.closure_status) ? <NumberField label="Closure day offset" value={loop.closure_day_offset} onChange={(value) => update("closure_day_offset", value)} error={errors.closure_day_offset} /> : null}
-          {loop.closure_status === "Still open" ? <NumberField label="Audit age in days" value={loop.audit_age_days_if_open} onChange={(value) => update("audit_age_days_if_open", value)} error={errors.audit_age_days_if_open} /> : null}
+          <SelectField helper="Was it reviewed by a clinician?" label="Clinician review status" options={reviewStatuses} value={loop.review_status} onChange={(value) => update("review_status", value as LoopDraft["review_status"])} error={errors.review_status} />
+          {loop.review_status === "Reviewed" ? <NumberField label="Days from Day 0 to clinician review" value={loop.review_day_offset} onChange={(value) => update("review_day_offset", value)} error={errors.review_day_offset} /> : null}
+          <SelectField helper="Was the patient contacted?" label="Patient contact status" options={contactStatuses} value={loop.contact_status} onChange={(value) => update("contact_status", value as LoopDraft["contact_status"])} error={errors.contact_status} />
+          {loop.contact_status === "Contacted" ? <NumberField label="Days from Day 0 to patient contact" value={loop.contact_day_offset} onChange={(value) => update("contact_day_offset", value)} error={errors.contact_day_offset} /> : null}
+          <SelectField helper="Was any action recorded in the chart or log?" label="Documented action status" options={actionStatuses} value={loop.action_status} onChange={(value) => update("action_status", value as LoopDraft["action_status"])} error={errors.action_status} />
+          {loop.action_status === "Action documented" ? <NumberField label="Days from Day 0 to recorded action" value={loop.action_day_offset} onChange={(value) => update("action_day_offset", value)} error={errors.action_day_offset} /> : null}
+          <SelectField helper="Was a visit, test, or referral appointment scheduled?" label="Follow-up scheduled status" options={followupScheduledStatuses} value={loop.followup_scheduled_status} onChange={(value) => update("followup_scheduled_status", value as LoopDraft["followup_scheduled_status"])} error={errors.followup_scheduled_status} />
+          {loop.followup_scheduled_status === "Scheduled" ? <NumberField label="Days from Day 0 to scheduling" value={loop.followup_scheduled_day_offset} onChange={(value) => update("followup_scheduled_day_offset", value)} error={errors.followup_scheduled_day_offset} /> : null}
+          <SelectField helper="Choose the best description of where this example ended up." label="Final or current state" options={closureStatuses} value={loop.closure_status} onChange={(value) => update("closure_status", value as LoopDraft["closure_status"])} error={errors.closure_status} />
+          {closureOffsetStatuses.includes(loop.closure_status) ? <NumberField label="Days from Day 0 to final status" value={loop.closure_day_offset} onChange={(value) => update("closure_day_offset", value)} error={errors.closure_day_offset} /> : null}
+          {loop.closure_status === "Still open" ? <NumberField label="If still open, how many days old was it?" value={loop.audit_age_days_if_open} onChange={(value) => update("audit_age_days_if_open", value)} error={errors.audit_age_days_if_open} /> : null}
         </FieldGrid>
       </FieldCard>
 
-      <FieldCard title="D. Workflow path" description="Roles are enough. Do not enter staff names. A handoff means the loop moved from one person or role to another.">
+      <FieldCard title="D. Who handled it" description="Roles are enough. Do not enter staff names. A handoff means the work moved from one person or role to another.">
         <FieldGrid>
-          <SelectField label="Who first received or noticed the loop?" options={firstReceiverRoles} value={loop.first_receiver_role} onChange={(value) => update("first_receiver_role", value as LoopDraft["first_receiver_role"])} error={errors.first_receiver_role} />
+          <SelectField label="Who first received or noticed it?" options={firstReceiverRoles} value={loop.first_receiver_role} onChange={(value) => update("first_receiver_role", value as LoopDraft["first_receiver_role"])} error={errors.first_receiver_role} />
           <SelectField label="Who reviewed it clinically?" options={reviewerRoles} value={loop.reviewer_role} onChange={(value) => update("reviewer_role", value as LoopDraft["reviewer_role"])} error={errors.reviewer_role} />
           <SelectField label="Who contacted the patient?" options={contactRoles} value={loop.contact_role} onChange={(value) => update("contact_role", value as LoopDraft["contact_role"])} error={errors.contact_role} />
-          <SelectField helper="Who was mainly responsible for making sure the loop reached closure?" label="Owner role" options={ownerRoles} value={loop.owner_role} onChange={(value) => update("owner_role", value as LoopDraft["owner_role"])} error={errors.owner_role} />
-          <SelectField label="Who closed the loop?" options={closerRoles} value={loop.closer_role} onChange={(value) => update("closer_role", value as LoopDraft["closer_role"])} error={errors.closer_role} />
-          <SelectField helper="A handoff means the loop moved from one person or role to another." label="Number of handoffs" options={handoffCounts} value={loop.handoff_count} onChange={(value) => update("handoff_count", value as LoopDraft["handoff_count"])} error={errors.handoff_count} />
-          <SelectField label="Tracking method for this loop" options={loopTrackingOptions} value={loop.tracking_method} onChange={(value) => update("tracking_method", value as LoopDraft["tracking_method"])} error={errors.tracking_method} />
-          <SelectField label="Support staff involved?" options={yesNoUnclear} value={loop.support_staff_involved} onChange={(value) => update("support_staff_involved", value as LoopDraft["support_staff_involved"])} error={errors.support_staff_involved} />
-          <SelectField label="Main communication channel" options={loopCommunicationChannels} value={loop.loop_communication_channel} onChange={(value) => update("loop_communication_channel", value as LoopDraft["loop_communication_channel"])} error={errors.loop_communication_channel} />
-          <SelectField required={false} label="Approximate outpatient load that day" options={opdVolumes} value={loop.clinic_load || "Unknown"} onChange={(value) => update("clinic_load", value as LoopDraft["clinic_load"])} error={errors.clinic_load} />
+          <SelectField helper="Who was mainly responsible for making sure it got finished?" label="Who was mainly responsible?" options={ownerRoles} value={loop.owner_role} onChange={(value) => update("owner_role", value as LoopDraft["owner_role"])} error={errors.owner_role} />
+          <SelectField label="Who finished or closed it?" options={closerRoles} value={loop.closer_role} onChange={(value) => update("closer_role", value as LoopDraft["closer_role"])} error={errors.closer_role} />
+          <SelectField helper="A handoff means the work moved from one person or role to another." label="How many times did it move between people or roles?" options={handoffCounts} value={loop.handoff_count} onChange={(value) => update("handoff_count", value as LoopDraft["handoff_count"])} error={errors.handoff_count} />
+          <SelectField helper="How was this example kept track of in practice?" label="Tracking method for this example" options={loopTrackingOptions} value={loop.tracking_method} onChange={(value) => update("tracking_method", value as LoopDraft["tracking_method"])} error={errors.tracking_method} />
+          <SelectField label="Were support staff involved?" options={yesNoUnclear} value={loop.support_staff_involved} onChange={(value) => update("support_staff_involved", value as LoopDraft["support_staff_involved"])} error={errors.support_staff_involved} />
+          <SelectField label="Main way the patient was contacted" options={loopCommunicationChannels} value={loop.loop_communication_channel} onChange={(value) => update("loop_communication_channel", value as LoopDraft["loop_communication_channel"])} error={errors.loop_communication_channel} />
+          <SelectField required={false} label="About how many outpatients were seen that day?" options={opdVolumes} value={loop.clinic_load || "Unknown"} onChange={(value) => update("clinic_load", value as LoopDraft["clinic_load"])} error={errors.clinic_load} />
         </FieldGrid>
       </FieldCard>
 
-      <FieldCard title="E. Resolution" description="Use documented status where available. This is a clinical consequence proxy, not blame scoring.">
+      <FieldCard title="E. Outcome" description="Use documented status where available. These answers describe what happened; they are not used to blame any person.">
         <FieldGrid>
-          <SelectField label="Current status" options={currentStatuses} value={loop.current_status} onChange={(value) => update("current_status", value as LoopDraft["current_status"])} error={errors.current_status} />
-          <SelectField label="Was the patient successfully contacted?" options={yesNoNotNeededUnknown} value={loop.patient_contacted} onChange={(value) => update("patient_contacted", value as LoopDraft["patient_contacted"])} error={errors.patient_contacted} />
+          <SelectField helper="Best overall status at the time of this survey." label="Best overall status now" options={currentStatuses} value={loop.current_status} onChange={(value) => update("current_status", value as LoopDraft["current_status"])} error={errors.current_status} />
+          <SelectField label="Was the patient successfully reached?" options={yesNoNotNeededUnknown} value={loop.patient_contacted} onChange={(value) => update("patient_contacted", value as LoopDraft["patient_contacted"])} error={errors.patient_contacted} />
           <SelectField label="Was follow-up completed?" options={yesNoNotNeededUnknown} value={loop.followup_completed} onChange={(value) => update("followup_completed", value as LoopDraft["followup_completed"])} error={errors.followup_completed} />
-          <SelectField label="Was urgent escalation required?" options={yesNoUnclear} value={loop.escalation_required} onChange={(value) => update("escalation_required", value as LoopDraft["escalation_required"])} error={errors.escalation_required} />
-          <SelectField label="Was emergency referral/admission documented?" options={yesNoUnclear} value={loop.emergency_referral_or_admission} onChange={(value) => update("emergency_referral_or_admission", value as LoopDraft["emergency_referral_or_admission"])} error={errors.emergency_referral_or_admission} />
-          <SelectField label="Was the care plan changed because of this loop?" options={yesNoUnclear} value={loop.care_plan_changed} onChange={(value) => update("care_plan_changed", value as LoopDraft["care_plan_changed"])} error={errors.care_plan_changed} />
+          <SelectField label="Was urgent escalation needed?" options={yesNoUnclear} value={loop.escalation_required} onChange={(value) => update("escalation_required", value as LoopDraft["escalation_required"])} error={errors.escalation_required} />
+          <SelectField label="Was emergency referral or hospital admission recorded?" options={yesNoUnclear} value={loop.emergency_referral_or_admission} onChange={(value) => update("emergency_referral_or_admission", value as LoopDraft["emergency_referral_or_admission"])} error={errors.emergency_referral_or_admission} />
+          <SelectField label="Did this example lead to a change in the care plan?" options={yesNoUnclear} value={loop.care_plan_changed} onChange={(value) => update("care_plan_changed", value as LoopDraft["care_plan_changed"])} error={errors.care_plan_changed} />
         </FieldGrid>
       </FieldCard>
 
-      <FieldCard title="F. Evidence quality" description="Evidence source means what you used to answer this row, such as chart, lab log, referral register, or memory.">
+      <FieldCard title="F. Source and confidence" description="Record-backed answers are best, but memory-based answers are allowed if you are honest about confidence.">
         <FieldGrid>
-          <SelectField helper="This helps separate record-backed rows from memory-backed rows." label="Evidence source" options={evidenceSources} value={loop.evidence_source} onChange={(value) => update("evidence_source", value as LoopDraft["evidence_source"])} error={errors.evidence_source} />
-          <SelectField label="Confidence" options={confidenceOptions} value={loop.confidence} onChange={(value) => update("confidence", value as LoopDraft["confidence"])} error={errors.confidence} />
-          <SelectField label="Selection method" options={selectionMethods} value={loop.selection_method} onChange={(value) => update("selection_method", value as LoopDraft["selection_method"])} error={errors.selection_method} />
-          <SelectField required={false} label="May a de-identified subset be verified later?" options={["", "Yes", "No", "Maybe"]} value={loop.verification_willingness || ""} onChange={(value) => update("verification_willingness", value as LoopDraft["verification_willingness"])} error={errors.verification_willingness} />
+          <SelectField helper="This shows whether the answers came from records or memory." label="What source did you use for these answers?" options={evidenceSources} value={loop.evidence_source} onChange={(value) => update("evidence_source", value as LoopDraft["evidence_source"])} error={errors.evidence_source} />
+          <SelectField label="How confident are you in these answers?" options={confidenceOptions} value={loop.confidence} onChange={(value) => update("confidence", value as LoopDraft["confidence"])} error={errors.confidence} />
+          <SelectField helper="This shows whether the example was chosen systematically or just because it was easy to find." label="How was this example selected?" options={selectionMethods} value={loop.selection_method} onChange={(value) => update("selection_method", value as LoopDraft["selection_method"])} error={errors.selection_method} />
+          <SelectField required={false} label="Could a version with identifying details removed be checked later by a reviewer?" options={["", "Yes", "No", "Maybe"]} value={loop.verification_willingness || ""} onChange={(value) => update("verification_willingness", value as LoopDraft["verification_willingness"])} error={errors.verification_willingness} />
         </FieldGrid>
       </FieldCard>
 
       <StickyNav
         back={onBack}
-        extra={index >= 6 ? <button className="h-12 rounded-full border border-red-200 bg-white px-5 text-sm font-semibold text-red-700" onClick={() => onRemove(index)} type="button">Remove optional loop</button> : null}
+        extra={index >= 6 ? <button className="h-12 rounded-full border border-red-200 bg-white px-5 text-sm font-semibold text-red-700" onClick={() => onRemove(index)} type="button">Remove optional example</button> : null}
         next={() => onSave("dashboard")}
-        nextLabel="Save and return"
+        nextLabel="Save example"
         secondaryNext={index + 1 < 6 ? () => onSave("next") : undefined}
-        secondaryNextLabel={index + 1 < 6 ? `Save and start Loop ${index + 2}` : undefined}
+        secondaryNextLabel={index + 1 < 6 ? `Save and start Example ${index + 2}` : undefined}
       />
     </Screen>
   );
@@ -862,20 +970,20 @@ function ReviewScreen({
   onSubmit: () => void;
 }) {
   return (
-    <Screen title="Review and submit" eyebrow="Final check" description="You can submit after 6 loops. Extra loops are optional. Incomplete optional loops are not submitted.">
-      <FieldCard title="Submission summary" description="Fix any incomplete required item before submitting.">
-        <SummaryRow label="Respondent context" complete={contextComplete} />
+    <Screen title="Check before submitting" eyebrow="Final check" description="You can submit after 6 finished examples. Extra examples are optional. Unfinished optional examples will not be sent.">
+      <FieldCard title="What will be submitted" description="Fix any required item marked below before submitting.">
+        <SummaryRow label="About you and your clinic" complete={contextComplete} />
         {loopStatuses.slice(0, 6).map((status, index) => (
-          <SummaryRow key={index} label={`Loop ${index + 1}`} complete={status === "Complete"} detail={status} />
+          <SummaryRow key={index} label={`Example ${index + 1}`} complete={status === "Complete"} detail={status} />
         ))}
-        <SummaryRow label="Evidence/confidence present for all submitted loops" complete={evidenceReady} />
-        <SummaryRow label="Operational readiness questions" complete={operationsComplete} />
-        <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-600">Rows to submit: {totalLoops}. Required loops complete: {completeRequiredLoops}/6.</div>
+        <SummaryRow label="Source and confidence recorded for all submitted examples" complete={evidenceReady} />
+        <SummaryRow label="Clinic setup questions" complete={operationsComplete} />
+        <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-600">Examples to submit: {totalLoops}. Required examples finished: {completeRequiredLoops}/6.</div>
       </FieldCard>
       <FieldCard title="Final privacy confirmation">
         <Checkbox
           checked={finalNoIdentifiers}
-          label="I confirm that I did not enter patient identifiers."
+          label="I confirm that I did not enter any patient-identifying information."
           onChange={onConfirm}
         />
         <ErrorText message={errors.final_no_identifiers || errors.form} />
@@ -885,7 +993,7 @@ function ReviewScreen({
         back={onBack}
         next={onSubmit}
         nextDisabled={completeRequiredLoops < 6 || !finalNoIdentifiers}
-        nextLabel="Submit de-identified audit"
+        nextLabel="Submit survey"
       />
     </Screen>
   );
@@ -894,11 +1002,11 @@ function ReviewScreen({
 function ThankYou({ submissionId }: { submissionId: string }) {
   return (
     <Screen
-      title="Submission received"
+      title="Survey received"
       eyebrow="Thank you"
-      description="Thank you for contributing to the CARE-PROGRESS India research pilot. Your response helps measure how time-sensitive outpatient care loops progress through review, contact, action, and closure."
+      description="Thank you for contributing to CARE-PROGRESS India. Your response helps us understand how time-sensitive outpatient follow-up moves through review, patient contact, action, and final outcome."
     >
-      <FieldCard title="What happens next" description="No clinical advice or patient-specific recommendation is generated by this website.">
+      <FieldCard title="What happens next" description="This website does not give clinical advice or patient-specific recommendations.">
         {submissionId ? <p className="text-xs text-slate-500">Submission ID: {submissionId}</p> : null}
       </FieldCard>
     </Screen>
@@ -942,15 +1050,15 @@ function FieldCard({ children, description, title }: { children: React.ReactNode
 
 function TimelineExplainer() {
   return (
-    <FieldCard title="Use day offsets, not dates" description="The index event is the day the loop began, such as when a result became available or a referral was created.">
+    <FieldCard title="Use day counts, not calendar dates" description="The index event is the starting day for this example, such as when a result became available or a referral was created.">
       <p className="text-sm leading-6 text-slate-700">
-        The index event is Day 0. If clinical review happened the same day, enter 0. If it happened three days later, enter 3.
-        If unknown or not needed, use the status field rather than guessing.
+        Day 0 is the starting day. If review happened the same day, enter 0. If it happened three days later, enter 3.
+        If you do not know the number or the step was not needed, use the status field instead of guessing.
       </p>
       <div className="grid gap-2 sm:grid-cols-3">
         <MetricCard label="Same day" value="0" />
-        <MetricCard label="Three days later" value="3" />
-        <MetricCard label="One week later" value="7" />
+        <MetricCard label="3 days later" value="3" />
+        <MetricCard label="1 week later" value="7" />
       </div>
     </FieldCard>
   );
@@ -963,8 +1071,8 @@ function FieldGrid({ children }: { children: React.ReactNode }) {
 function PrivacyReminder({ compact = false }: { compact?: boolean }) {
   return (
     <p className={`rounded-2xl border border-amber-200 bg-amber-50 text-amber-950 ${compact ? "px-3 py-2 text-sm" : "p-4 text-sm leading-6"}`}>
-      Do not enter patient identifiers.
-      {!compact ? ` ${IDENTIFIER_WARNING}` : " No names, phone numbers, MRNs, Aadhaar numbers, or identifiable details."}
+      Do not enter patient-identifying information.
+      {!compact ? ` ${IDENTIFIER_WARNING}` : " No names, phone numbers, MRNs, Aadhaar numbers, screenshots, or document images."}
     </p>
   );
 }
@@ -1043,7 +1151,7 @@ function TextField({ error, label, onChange, value }: { error?: string; label: s
   return (
     <label className="block text-sm font-medium text-slate-800">
       <FieldLabel label={label} />
-      <span className="mt-1 block text-xs font-normal leading-5 text-amber-800">Do not include names, phone numbers, MRNs, Aadhaar numbers, or identifiable details.</span>
+      <span className="mt-1 block text-xs font-normal leading-5 text-amber-800">Use a made-up code only. Do not include names, phone numbers, MRNs, Aadhaar numbers, or other identifying details.</span>
       <input className="mt-2 h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-base outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-100" value={value} onChange={(event) => onChange(event.target.value)} />
       <ErrorText message={error} />
     </label>
@@ -1084,7 +1192,7 @@ function SelectField({
       {helper ? <span className="mt-1 block text-xs font-normal leading-5 text-slate-500">{helper}</span> : null}
       <select className="mt-2 h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-base outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-100" value={value ?? ""} onChange={(event) => onChange(event.target.value)}>
         {options.map((option) => (
-          <option key={option} value={option}>{option || "No response"}</option>
+          <option key={option} value={option}>{getOptionLabel(option)}</option>
         ))}
       </select>
       <ErrorText message={error} />
@@ -1130,13 +1238,17 @@ function CheckboxGroup({ error, label, onChange, options, required = true, value
                 onChange(next);
               }}
             />
-            {option}
+            {getOptionLabel(option)}
           </label>
         ))}
       </div>
       <ErrorText message={error} />
     </fieldset>
   );
+}
+
+function getOptionLabel(option: string) {
+  return friendlyOptionLabels[option] ?? option;
 }
 
 function ErrorText({ message }: { message?: string }) {

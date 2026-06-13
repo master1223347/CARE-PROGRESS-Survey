@@ -18,7 +18,7 @@ export function AdminExport() {
   const [status, setStatus] = useState("");
 
   async function download(file: string) {
-    setStatus(`Preparing ${file}...`);
+    setStatus(`Preparing ${file} for download...`);
     const response = await fetch(`/api/admin/export/${file}`, {
       headers: { "x-admin-password": password },
     });
@@ -47,13 +47,13 @@ export function AdminExport() {
         </Link>
         <div className="mt-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">CARE-PROGRESS India</p>
-          <h1 className="mt-2 text-2xl font-semibold">Protected CSV export</h1>
+          <h1 className="mt-2 text-2xl font-semibold">Download CSV files with identifying details removed</h1>
           <p className="mt-2 text-sm leading-6 text-slate-600">
-            Enter the admin export password from the deployment environment. Exports contain de-identified survey rows only.
+            Enter the admin password from the deployment environment. These files contain survey data only, with identifying details removed.
           </p>
           <form className="mt-5" onSubmit={(event) => event.preventDefault()}>
             <label className="block text-sm font-medium" htmlFor="password">
-              Admin export password
+              Admin password
             </label>
             <input
               autoComplete="current-password"
